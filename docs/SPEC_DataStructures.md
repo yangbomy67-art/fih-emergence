@@ -20,7 +20,7 @@ class FIHState(TypedDict):
     task_description: str           # 用户输入的原始任务
     mode: str                       # 固定 "FULL"
     session_id: str                 # 会话唯一ID
-    iteration: int                  # 当前轮次 (1, 2, 3, ...)
+    current_round: int              # 当前轮次 (1, 2, 3, ...)
     max_iterations: int             # 最大轮次限制 (默认 20)
 
     # ═════════════════════════════════════════════════════════════

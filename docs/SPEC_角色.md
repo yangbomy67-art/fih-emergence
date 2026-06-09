@@ -17,6 +17,7 @@ Manager 是系统唯一与 Human Gate 交互的角色。
 ### 低谷穿越
 
 - Auditor 识别 + 建议，Manager 裁决 + 执行
+- **滑动窗口**：最近 3 轮，用于检测产出低谷
 
 ---
 
@@ -39,18 +40,36 @@ Manager 是系统唯一与 Human Gate 交互的角色。
 
 ### 模式
 
-双 Worker 模式（正方/反方），每个 Worker 内嵌正/反/判三方对抗。
+双 Worker 模式（正方/反方），每个 Worker 内嵌正/反、判三方对抗。
 
 ### GAN 对抗（并行+同步）
 
-- Phase A：Worker_P 和 Worker_N 各自产出初稿 Insight（含 self_confidence，范围 0-100%）
-- Phase B：Auditor 检查双方 self_confidence（范围 0-100%）
-- 若一方 > 90% → 要求弱势方重新产出（注入对抗性 Hint）
+**两层对抗，串行执行**：
 
-### 输出
+1. **Worker 内嵌三方对抗**（Phase A1）：
+   - Worker 内部生成初稿 → 自反驳 → 自判断
+   - 产出包含 self_confidence（0-100%）
 
-- Insight：基于当前 Facts 推理，引用以 [F1] [H2] 形式回指
-- Next Intent 建议 (1-3条)
+2. **双 Worker 间对抗**（Phase A2）：
+   - Worker_P 和 Worker_N 并行产出初稿 Insight
+   - 各自包含 self_confidence
+
+3. **Auditor 信心检查**（Phase B）：
+   - Auditor 检查双方 self_confidence
+   - 若一方 > 90% → 要求弱势方重新产出（注入对抗性 Hint）
+
+### 执行顺序图
+
+```
+Worker_P / Worker_N 各自内部:
+  生成初稿 → 自反驳 → 自判断 → self_confidence
+                    ↓
+        并行产出 → Auditor 检查信心
+                    ↓
+        若信心差距大 → 弱势方重产
+                    ↓
+        产出 Insight + Next Intent 建议
+```
 
 ---
 
