@@ -41,12 +41,12 @@
 
 #### Commit
 
-- `a1eacae` - fix: 10 个 SPEC Review 问题修复
+- `4bbc4f6` - test: 补充 Manager 角色单元测试 (28 tests)
+- `e6a04f0` - fix: Lint 修复 (ruff check --fix)
+- `008fa90` - docs: 更新 CHANGELOG v1.0.1 记录 Minor/Nit 修复
 - `785c10b` - fix: 5 Minor + 1 Nit 问题修复
-
----
-
-## v1.0 (2026-06-09)
+- `87033c2` - docs: 更新 CHANGELOG v1.0.1 记录 SPEC Review 修复
+- `a1eacae` - fix: 10 个 SPEC Review 问题修复
 
 ### init: 项目初始化 + SPEC 文档
 
