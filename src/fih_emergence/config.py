@@ -189,13 +189,16 @@ class Config:
             # 默认返回 Custom 客户端
             return create_llm_client(provider="custom")
 
-        # api_key 优先使用配置，其次从环境变量
-        api_key = model_config.api_key or os.getenv("LLM_API_KEY", "")
+        # api_key 优先使用环境变量
+        api_key = os.getenv("LLM_API_KEY", "")
+        # 兼容配置文件中空的 api_key
+        if not api_key and model_config.api_key:
+            api_key = model_config.api_key
         
         return create_llm_client(
             provider=model_config.provider,
             api_key=api_key,
-            base_url=model_config.api_url or None,
+            base_url=model_config.api_url or os.getenv("LLM_API_URL", ""),
             model=model_config.model,
         )
 

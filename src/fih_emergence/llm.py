@@ -216,7 +216,9 @@ def get_manager_client() -> BaseLLMClient:
     """Manager 角色使用的 LLM 客户端"""
     return create_llm_client(
         provider=os.getenv("MANAGER_PROVIDER", "custom"),
-        model=os.getenv("MANAGER_MODEL", "glm-4-flash"),
+        api_key=os.getenv("LLM_API_KEY", ""),
+        base_url=os.getenv("LLM_API_URL", ""),
+        model=os.getenv("MANAGER_MODEL", "MiniMax-M2.5"),
     )
 
 
@@ -224,17 +226,19 @@ def get_proposer_client() -> BaseLLMClient:
     """Proposer 角色使用的 LLM 客户端"""
     return create_llm_client(
         provider=os.getenv("PROPOSER_PROVIDER", "custom"),
-        model=os.getenv("PROPOSER_MODEL", "glm-4-flash"),
+        api_key=os.getenv("LLM_API_KEY", ""),
+        base_url=os.getenv("LLM_API_URL", ""),
+        model=os.getenv("PROPOSER_MODEL", "kimi-k2.6"),
     )
 
 
 def get_worker_client(worker_id: str = None) -> BaseLLMClient:
     """Worker 角色使用的 LLM 客户端"""
-    # Worker_P 使用 glm-5.1, Worker_N 使用其他
-    model = os.getenv("WORKER_MODEL", "glm-5.1")
     return create_llm_client(
         provider=os.getenv("WORKER_PROVIDER", "custom"),
-        model=model,
+        api_key=os.getenv("LLM_API_KEY", ""),
+        base_url=os.getenv("LLM_API_URL", ""),
+        model=os.getenv("WORKER_MODEL", "glm-5.1"),
     )
 
 
@@ -242,5 +246,7 @@ def get_auditor_client() -> BaseLLMClient:
     """Auditor 角色使用的 LLM 客户端"""
     return create_llm_client(
         provider=os.getenv("AUDITOR_PROVIDER", "custom"),
-        model=os.getenv("AUDITOR_MODEL", "Qwen3-235B-A22B"),
+        api_key=os.getenv("LLM_API_KEY", ""),
+        base_url=os.getenv("LLM_API_URL", ""),
+        model=os.getenv("AUDITOR_MODEL", "Qwen3.5-397B-A17B"),
     )
