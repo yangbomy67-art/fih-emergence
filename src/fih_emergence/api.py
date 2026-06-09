@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from fih_emergence.config import get_config
 from fih_emergence.database import (
     create_session,
     init_db,
@@ -23,8 +24,11 @@ from fih_emergence.database import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
+    # 加载配置
+    config = get_config()
+
     # 启动时初始化数据库
-    await init_db()
+    await init_db(config.database.path)
     yield
     # 关闭时清理资源
 

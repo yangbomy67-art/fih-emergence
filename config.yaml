@@ -1,0 +1,99 @@
+# FIH Emergence 配置文件
+# 基于 SPEC_保护机制.md 和 SPEC_角色.md
+
+## 服务配置
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false  # 生产环境设为 false
+
+## 数据库配置
+database:
+  path: "./data/fih_blackboard.db"
+  auto_init: true
+
+## 任务配置
+task:
+  # 最大轮次限制 (SPEC_保护机制.md)
+  max_rounds: 20
+  # 单轮最大重试次数
+  max_retry_per_round: 3
+  # 人工介入超时时间（秒）
+  human_timeout: 300  # 5分钟
+
+## AI 模型配置
+models:
+  # Manager: 决策/汇总 (SPEC_角色.md)
+  manager:
+    provider: "custom"
+    model: "glm-4-flash"
+    temperature: 0.7
+    max_tokens: 2048
+
+  # Proposer: 生成候选 Intent
+  proposer:
+    provider: "custom"
+    model: "glm-4-flash"
+    temperature: 0.8
+    max_tokens: 2048
+
+  # Worker: 产出 Insight
+  worker:
+    provider: "custom"
+    model: "glm-5.1"
+    temperature: 0.7
+    max_tokens: 4096
+
+  # Auditor: 审计/EI 评估
+  auditor:
+    provider: "custom"
+    model: "Qwen3-235B-A22B"
+    temperature: 0.5
+    max_tokens: 2048
+
+## EI 评估配置
+ei:
+  # result_EI 通过阈值 (SPEC_EI.md)
+  result_ei_threshold: 15
+  # 置信度聚合阈值
+  confidence_aggregation_threshold: 85
+  # 四维评分阈值
+  scores_4d_threshold: 7
+
+## 中断条件配置
+interrupt:
+  # 置信度异常阈值
+  confidence_anomaly:
+    dominant_threshold: 90
+    weak_threshold: 30
+    stalemate_min: 45
+    stalemate_max: 55
+
+  # 产出停滞检测
+  output_stagnation:
+    no_fact_rounds_threshold: 3
+    consecutive_same_output_threshold: 2
+
+## 低谷穿越配置
+valley:
+  # 滑动窗口大小
+  window_size: 3
+  # result_ei 低谷阈值
+  ei_low_threshold: 10
+  # 无产出轮次阈值
+  no_fact_rounds_threshold: 3
+
+## 日志配置
+logging:
+  level: "INFO"  # DEBUG/INFO/WARNING/ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "./logs/fih_emergence.log"
+
+## Human Gate 配置
+human_gate:
+  # CLI 模式
+  cli_mode: true
+  # WebSocket 心跳间隔（秒）
+  heartbeat_interval: 30
+  # 重连最大尝试次数
+  max_reconnect_attempts: 5

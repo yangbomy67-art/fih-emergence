@@ -11,15 +11,20 @@ from pathlib import Path
 import aiosqlite
 
 # 数据目录
-DATA_DIR = Path.home() / ".fih-emergence"
-DB_PATH = DATA_DIR / "blackboard.db"
+# 数据目录
+DATA_DIR = Path("./data")
 
 
-async def init_db() -> None:
+async def init_db(db_path: str = None) -> None:
     """初始化数据库，创建所有表"""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    if db_path:
+        db_file = Path(db_path)
+    else:
+        db_file = DATA_DIR / "blackboard.db"
 
-    async with aiosqlite.connect(DB_PATH) as db:
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+
+    async with aiosqlite.connect(db_file) as db:
         # session_meta
         await db.execute("""
             CREATE TABLE IF NOT EXISTS session_meta (
@@ -110,7 +115,7 @@ async def create_session(
 ) -> None:
     """创建新会话"""
     now = datetime.utcnow().isoformat() + "Z"
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         await db.execute(
             """INSERT INTO session_meta
                (session_id, task_description, max_iterations, mode, created_at, updated_at, current_round, status)
@@ -122,7 +127,7 @@ async def create_session(
 
 async def get_session(session_id: str) -> dict | None:
     """获取会话元数据"""
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT * FROM session_meta WHERE session_id = ?", (session_id,)
@@ -136,7 +141,7 @@ async def update_session(session_id: str, **kwargs) -> None:
     kwargs["updated_at"] = datetime.utcnow().isoformat() + "Z"
     set_clause = ", ".join(f"{k} = ?" for k in kwargs)
     values = list(kwargs.values()) + [session_id]
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         await db.execute(
             f"UPDATE session_meta SET {set_clause} WHERE session_id = ?", values
         )
@@ -160,7 +165,7 @@ async def save_snapshot(
 ) -> None:
     """保存黑板快照"""
     now = datetime.utcnow().isoformat() + "Z"
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         await db.execute(
             """INSERT OR REPLACE INTO blackboard_snapshots
                (session_id, round, facts, hints, intents, winner_intent, worker_submissions,
@@ -188,7 +193,7 @@ async def save_snapshot(
 
 async def get_snapshot(session_id: str, round_num: int) -> dict | None:
     """获取黑板快照"""
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT * FROM blackboard_snapshots WHERE session_id = ? AND round = ?",
@@ -210,7 +215,7 @@ async def save_ei_tracking(
 ) -> None:
     """保存 EI 追踪数据"""
     now = datetime.utcnow().isoformat() + "Z"
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         await db.execute(
             """INSERT OR REPLACE INTO ei_tracking
                (session_id, round, intent_ei_scores, result_ei, result_ei_S1, result_ei_S2, result_ei_S3, scores_4d, created_at)
@@ -240,7 +245,7 @@ async def log_human_intervention(
 ) -> None:
     """记录人工介入日志"""
     now = datetime.utcnow().isoformat() + "Z"
-    async with aiosqlite.connect(DB_PATH) as db:
+    async with aiosqlite.connect(DATA_DIR / "blackboard.db") as db:
         await db.execute(
             """INSERT INTO human_intervention_log
                (session_id, round, reason, action, content, rerun_worker, created_at)
