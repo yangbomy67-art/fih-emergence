@@ -29,7 +29,7 @@ Manager 是系统唯一与 Human Gate 交互的角色。
     - 三类 Intent 缺少任意一类
     - 候选 Intent 没有支撑 Fact
     - 候选 Intent 之间差异度 < 0.3
-- **多草稿生成**：��于当前 Facts + Hints，生成 N=2-4 个候选 Intent
+- **多草稿生成**：基于当前 Facts + Hints，生成 N=2-4 个候选 Intent
 - **发布/更新 Intent**
 
 ---

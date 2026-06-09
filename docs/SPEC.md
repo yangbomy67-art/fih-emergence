@@ -24,6 +24,8 @@ FIH (Fact-Intent-Hint) 多智能体协作框架，基于因果涌现理论实现
 | [SPEC_API.md](./SPEC_API.md) | HTTP API 端点设计 |
 | [SPEC_保护机制.md](./SPEC_保护机制.md) | max_retry/终止条件/快照/回退 |
 | [SPEC_EI.md](./SPEC_EI.md) | EI 评估 + 四维审计 + 通信/权限矩阵 |
+| [SPEC_架构实现.md](./SPEC_架构实现.md) | 架构设计（FastAPI + LangGraph + WebSocket） |
+| [SPEC_DataStructures.md](./SPEC_DataStructures.md) | 数据结构 + SQLite 黑板 |
 
 ---
 

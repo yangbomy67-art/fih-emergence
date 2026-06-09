@@ -31,7 +31,7 @@
 ## 快照策略
 
 - **保存时机**：每轮 Manager 汇总裁决后
-- **保存内容**：`{ round: N, facts[], hints[], confirmed_intent, audit_4d_result }`
+- **保存内容**：`{ round: N, facts[], hints[], winner_intent, audit_4d_result }`
 - **保留策略**：保留最近 10 轮，超过后自动清理第 11 轮
 - **回退时**：恢复到指定轮次的快照 + 清除该轮之后的所有后续轮次
 

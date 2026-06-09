@@ -41,7 +41,7 @@
 | **A 因果自主性** | 移除任一支撑 Fact 该 Insight 仍完全成立(完全自主) | 移除支撑 Fact 后 Insight 仍大致成立但需调整表述 | 移除支撑 Fact 后 Insight 部分崩塌 | 移除任一支撑 Fact Insight 立即崩塌(完全派生) |
 | **B 时间稳定性** | 最近 3 轮持续强化(每轮都被引用且新证据加固) | 最近 3 轮稳定维持(被引用但无新加固) | 最近 3 轮中有 1 轮出现质疑 | 最近 3 轮中被推翻或冲突 |
 | **C 跨路径一致性** | 以不同初始 Intent 重新推演仍收敛到相同结论 | 重新推演大致收敛但有细节差异 | 重新推演结论部分发散 | 重新推演结论完全发散(无一致性) |
-| **D 可传递性** | 可直接作为新任务的起点无需额外解释 | 作为新任务起点需少量补充 | 作为新任务起点需大量补充 | 无法作为新任务���点 |
+| **D 可传递性** | 可直接作为新任务的起点无需额外解释 | 作为新任务起点需少量补充 | 作为新任务起点需大量补充 | 无法作为新任务起点 |
 
 ### 综合判定
 
@@ -71,7 +71,10 @@ Worker 推理 → Auditor 提取 → Manager 裁决 → 黑板 Fact
 
 ```
 数据流: Manager → Proposer
+数据流: Proposer → Manager (发布候选 Intent 供确认)
 数据流: Manager → Auditor
+数据流: Workers → Auditor (提交 Insight 供审计)
+数据流: Auditor → Manager (返回审计结果)
 控制流: Manager → Human Gate (请求中断) → 人工操作 → Manager (指令返回)
 
 Auditor 检测条件 → 通过 valley_report 通知 Manager → Manager 判定是否触发中断

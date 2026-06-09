@@ -14,7 +14,8 @@ Human Gate (CLI/Skill)  ←HTTP/WSS→  FIH Backend Service
 |------|------|------|
 | POST | `/start` | 开始任务（Round 1） |
 | GET | `/status` | 查看状态 |
-| POST | `/stop` | 终止任务 |
+| POST | `/stop` | 强制终止任务（立即结束，不做产出整合） |
+| POST | `/force-complete` | 强制完成（输出最终成果） |
 
 ### 人工操作
 
@@ -96,8 +97,8 @@ Human Gate (CLI/Skill)  ←HTTP/WSS→  FIH Backend Service
   "condition": "confidence_anomaly",
   "context": {
     "round": 3,
-    "worker_p_confidence": 0.92,
-    "worker_n_confidence": 0.28
+    "worker_p_confidence": 92,
+    "worker_n_confidence": 28
   }
 }
 ```
