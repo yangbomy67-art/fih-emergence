@@ -117,7 +117,54 @@ class CustomClient(BaseLLMClient):
         super().__init__(api_key, base_url, model)
 
     async def chat(self, messages: list[dict], temperature: float = 0.7, max_tokens: int = 2048, **kwargs) -> LLMResponse:
-        return LLMResponse(content="[Mock] Custom LLM Response", model=self.model)
+        """调用自定义 API"""
+        import aiohttp
+        
+        if not self.api_key:
+            return LLMResponse(content="[Mock] No API Key", model=self.model)
+        
+        if not self.base_url:
+            return LLMResponse(content="[Mock] No API URL", model=self.model)
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60),
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        return LLMResponse(
+                            content=f"[API Error {response.status}] {error_text[:200]}",
+                            model=self.model,
+                        )
+                    
+                    data = await response.json()
+                    content = data["choices"][0]["message"]["content"]
+                    usage = data.get("usage", {})
+                    
+                    return LLMResponse(
+                        content=content,
+                        model=self.model,
+                        usage=usage,
+                        raw_response=data,
+                    )
+        except Exception as e:
+            return LLMResponse(content=f"[Error] {str(e)[:200]}", model=self.model)
 
     async def complete(self, prompt: str, temperature: float = 0.7, max_tokens: int = 2048, **kwargs) -> LLMResponse:
         messages = [{"role": "user", "content": prompt}]

@@ -24,8 +24,10 @@ from fih_emergence.database import (
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
-    # 加载配置
-    config = get_config()
+    # 加载配置（指定默认路径）
+    from pathlib import Path
+    config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    config = get_config(str(config_path))
 
     # 启动时初始化数据库
     await init_db(config.database.path)

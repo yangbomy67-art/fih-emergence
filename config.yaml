@@ -15,7 +15,7 @@ database:
 ## 任务配置
 task:
   # 最大轮次限制 (SPEC_保护机制.md)
-  max_rounds: 20
+  max_rounds: 5
   # 单轮最大重试次数
   max_retry_per_round: 3
   # 人工介入超时时间（秒）
