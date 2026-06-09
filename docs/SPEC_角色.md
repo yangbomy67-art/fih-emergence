@@ -42,8 +42,8 @@ Manager 是系统唯一与 Human Gate 交互的角色。
 
 ### GAN 对抗（并行+同步）
 
-- Phase A：Worker_P 和 Worker_N 各自产出初稿 Insight（含 self_confidence）
-- Phase B：Auditor 检查双方 self_confidence
+- Phase A：Worker_P 和 Worker_N 各自产出初稿 Insight（含 self_confidence，范围 0-100%）
+- Phase B：Auditor 检查双方 self_confidence（范围 0-100%）
 - 若一方 > 90% → 要求弱势方重新产出（注入对抗性 Hint）
 
 ### 输出
