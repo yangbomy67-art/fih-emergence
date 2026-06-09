@@ -5,14 +5,13 @@ Based on SPEC_DataStructures.md §1
 """
 
 import pytest
+
 from fih_emergence.state import (
-    FIHState,
-    create_initial_state,
     Fact,
     Hint,
     Intent,
     WorkerSubmission,
-    AuditResult,
+    create_initial_state,
 )
 
 

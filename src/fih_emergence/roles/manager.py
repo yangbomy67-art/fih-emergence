@@ -71,14 +71,22 @@ class Manager:
         Returns:
             (是否触发, 原因)
         """
-        # 条件1: 置信度异常
+        # 条件1: 置信度异常（单方面主导）
         if len(state.get("worker_submissions", [])) >= 2:
             submissions = state["worker_submissions"]
             p_conf = submissions[0].get("self_confidence", 0)
             n_conf = submissions[1].get("self_confidence", 0)
 
-            if (p_conf > 90 and n_conf < 30) or (45 <= p_conf <= 55 and 45 <= n_conf <= 55):
+            # 正方主导: P>90% 且 N<30%
+            if p_conf > 90 and n_conf < 30:
                 return True, f"confidence_anomaly: P={p_conf}%, N={n_conf}%"
+            # 反方主导: N>90% 且 P<30%
+            if n_conf > 90 and p_conf < 30:
+                return True, f"confidence_anomaly: P={p_conf}%, N={n_conf}%"
+
+            # 僵持: 双方都在 45-55% 范围内
+            if 45 <= p_conf <= 55 and 45 <= n_conf <= 55:
+                return True, f"stalemate: P={p_conf}%, N={n_conf}%"
 
         # 条件2: 产出停滞（连续无 Fact+）
         if state.get("no_fact_rounds", 0) >= 3:
