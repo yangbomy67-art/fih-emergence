@@ -116,7 +116,7 @@ CREATE TABLE session_meta (
     updated_at TEXT NOT NULL,
     current_round INTEGER DEFAULT 0,
     status TEXT DEFAULT 'active',  -- 'active' | 'completed' | 'aborted'
-    final_output TEXT,
+    final_output TEXT
 );
 ```
 
@@ -205,7 +205,7 @@ CREATE TABLE human_intervention_log (
     -- 结果
     rerun_worker TEXT,             -- "overwrite" | "new_round"
 
-    created_at TEXT NOT NULL,
+    created_at TEXT NOT NULL
 );
 
 CREATE INDEX idx_intervention_session
@@ -221,6 +221,57 @@ ON human_intervention_log(session_id, round);
 ├── blackboard.db              # SQLite 数据库
 └── logs/                      # 日志目录
 ```
+
+---
+
+## 四、状态迁移表
+
+### 4.1 主状态机
+
+| 状态 | 含义 | 进入条件 | 退出条件 |
+|------|------|----------|----------|
+| `idle` | 空闲，等待任务 | 系统启动 / 任务终止后 | 收到 `/start` 请求 |
+| `running` | 执行中 | `/start` 成功 / `interrupt` 恢复后 | 触发 `interrupt` / 任务完成 |
+| `interrupted` | 等待人工介入 | 4 条件满足触发 `interrupt` | 用户响应 / 超时 5min |
+| `completed` | 任务完成 | 达到终止条件且 Manager 确认 | - |
+| `aborted` | 任务中止 | 用户执行 `/stop` / 不可恢复错误 | - |
+
+### 4.2 字段迁移规则
+
+| 迁移 | 触发条件 | 重置/更新的字段 |
+|------|----------|-----------------|
+| idle → running | `/start` | `current_round=1`, `task_complete=false`, `is_first_round=true`, `task_boundary_status="open"` |
+| running → interrupted | 4条件触发 | `needs_human=true`, `human_intervention_reason` 设为具体原因 |
+| interrupted → running (resume) | 用户响应 `/interrupt` | `needs_human=false`, `human_action_taken` 设为用户操作 |
+| interrupted → running (timeout) | 超时 5min | 见 SPEC_保护机制.md §超时后的行为定义 |
+| running → completed | 终止条件满足 | `task_complete=true`, `task_boundary_status="closed"`, `final_output` 设为整合产出 |
+| running → aborted | `/stop` | `task_complete=false`, `task_boundary_status="closed"`, `final_output=null` |
+
+### 4.3 轮次相关字段迁移
+
+| 字段 | 每轮重置 | 累积 | 说明 |
+|------|:--------:|:----:|------|
+| `intents` | ✓ | - | 每轮重置为新候选 |
+| `facts` | - | ✓ | append-only |
+| `hints` | - | ✓ | append-only |
+| `worker_submissions` | ✓ | - | 每轮重置 |
+| `audit_result` | ✓ | - | 每轮重置 |
+| `winner_intent` | ✓ | - | 每轮覆盖 |
+| `fact_plus_executed` | ✓ | - | 每轮重置 |
+| `hints_promoted_to_facts` | ✓ | - | 每轮重置 |
+| `consecutive_same_output` | 见说明 | - | 仅当产出与上一轮完全相同时 +1，否则重置为 0 |
+| `valley_signals` | - | ✓ | 滑动窗口保留最近 5 轮 |
+| `valley_detected` | ✓ | - | 每轮重新检测 |
+
+### 4.4 非法状态组合（断言检查）
+
+以下组合应被断言拒绝（实现时应检查）：
+
+- `task_complete=true` 且 `current_round > max_rounds` — 正常完成不应超出轮次限制
+- `needs_human=true` 且 `task_complete=true` — 完成状态下不应需要人工介入
+- `current_round=1` 且 `consecutive_same_output>0` — 首轮无历史产出可比较
+- `task_boundary_status="closed"` 且 `needs_human=true` — 已关闭的任务不应有新介入
+- `valley_detected=true` 且 `valley_signals` 为空 — 有低谷标记必有信号
 
 ---
 

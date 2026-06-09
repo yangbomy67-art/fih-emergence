@@ -33,7 +33,7 @@
 
 ## 数据流
 
-| 衔接要素 | Round N → N+1 |
+|| 衔接要素 | Round N → N+ |
 |----------|---------------|
 | Facts | 累积（append-only） |
 | Hints | 累积（追加新 Hint + Hint+ 候选） |
@@ -46,6 +46,74 @@
 
 - **Round 1**：Human Gate CLI `/start <topic>` → Manager
 - **Round N+**：Manager 基于上一轮 Next Intent 建议自动生成
+
+---
+
+## 异常流（补充）
+
+### 异常 A: Auditor 事前打回
+
+```
+Auditor 事前审计 → 不通过
+       ↓
+Proposer 重新生成候选 Intent
+       ↓
+retry 计数器 +1
+       ↓
+retry ≤ 3? → 是 → 回到 "Manager 确认 Intent"
+       ↓ 否
+尝试本轮其他候选 Intent
+       ↓
+有剩余候选? → 是 → 回到 "Manager 确认 Intent"
+       ↓ 否
+null round（不产出 Insight）→ 下一轮
+```
+
+### 异常 B: retry 耗尽
+
+```
+max_retry = 3 已用尽
+       ↓
+尝试同轮内其他候选 Intent
+       ↓
+全部失败 → null round（不产出 Insight）
+       ↓
+Round 计数器 +1
+       ↓
+进入下一轮（Manager 基于上一轮 Next Intent 建议生成新主题）
+```
+
+### 异常 C: Worker 产出异常
+
+```
+Worker 产出为空 / 格式错误 / 无效 Insight
+       ↓
+Auditor 标记本轮 Worker 产出为失败
+       ↓
+Manager 汇总裁决：
+  - 若失败比例低 → 继续当前轮下一步
+  - 若失败比例高 → 决定：
+      ├─ 重试本轮 Worker（重新执行 GAN 对抗）
+      └─ 终止任务（触发 force_complete 流程）
+```
+
+### 异常 D: 4 条件触发中断
+
+```
+Manager 检测到 4 条件满足
+       ↓
+触发 human_gate_interrupt
+       ↓
+LangGraph 暂停（interrupt）
+       ↓
+WebSocket 推送 → Human Gate 客户端
+       ↓
+用户选择操作 → POST /interrupt
+       ↓
+State Manager 调用 graph.invoke(resume={...})
+       ↓
+工作流从 Manager 处恢复
+```
 
 ---
 

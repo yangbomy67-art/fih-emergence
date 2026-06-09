@@ -104,9 +104,27 @@
 
 LangGraph 节点内部检测到 4 条件时：
 
-1. 节点调用 `interrupt({"condition": "xxx", "context": {...}})`
-2. State Manager 捕获 interrupt，通过 WebSocket 推送到 Human Gate
-3. Human Gate 客户端收到消息，提示人工介入
+1. **先推送**：State Manager 通过 WebSocket 向 Human Gate 推送中断事件
+2. **推送成功** → LangGraph 调用 `interrupt()` 暂停工作流
+3. **推送失败**（客户端断连/网络错误）→ **不触发 interrupt**，记录警告日志，工作流继续执行
+
+### 时序保证
+
+```
+节点检测 4 条件
+       ↓
+WebSocket 推送 (interrupt_triggered)
+       ↓
+推送成功? → 否 → 记录 WARNING，不 interrupt，工作流继续
+       ↓ 是
+调用 interrupt() 暂停工作流
+       ↓
+State Manager 捕获 interrupt
+       ↓
+等待 Human Gate 响应或超时
+```
+
+**关键设计**：推送是原子性的前置条件。若 Human Gate 客户端因网络问题未收到推送，工作流不会暂停，避免"卡在 interrupted 状态但无人响应"的死锁。
 
 ### 事件类型
 
@@ -149,10 +167,106 @@ State Manager 调用 graph.invoke(resume={...})
 
 ## 端口配置
 
-| 服务 | 默认端口 |
+|| 服务 | 默认端口 |
+||------|----------|
+|| FIH Backend | 8000 |
+|| WebSocket | 8001 (或与 8000 共享)
+
+---
+
+## 可观测性设计
+
+### 日志级别
+
+| 级别 | 使用场景 |
 |------|----------|
-| FIH Backend | 8000 |
-| WebSocket | 8001 (或与 8000 共享) |
+| DEBUG | 节点进出、参数传递、详细执行路径 |
+| INFO | 轮次开始/结束、状态迁移、关键决策点 |
+| WARNING | 可恢复错误（如 LLM 重试）、边界条件 |
+| ERROR | 不可恢复错误、异常终止、任务中止 |
+
+### 结构化日志
+
+每个日志条目包含：
+
+```json
+{
+  "timestamp": "2026-06-09T12:00:00Z",
+  "level": "INFO",
+  "session_id": "uuid",
+  "round": 3,
+  "node": "Manager",
+  "event": "intent_confirmed",
+  "duration_ms": 150,
+  "data": { ... }
+}
+```
+
+### 节点日志
+
+每个 LangGraph 节点进出时记录：
+
+| 字段 | 说明 |
+|------|------|
+| `node` | 节点名称（Manager/Proposer/Auditor/Worker_P/Worker_N） |
+| `event` | 进: `node_enter` / 出: `node_exit` |
+| `duration_ms` | 节点执行耗时 |
+| `state_delta` | 状态变更摘要（哪些字段变化） |
+
+### LLM 调用日���
+
+每次 LLM 调用记录：
+
+| 字段 | 说明 |
+|------|------|
+| `prompt_tokens` | 输入 token 数 |
+| `completion_tokens` | 输出 token 数 |
+| `latency_ms` | 调用耗时 |
+| `model` | 使用的模型 |
+| `prompt_hash` | prompt 的 SHA256 前 16 位（用于去重/调试） |
+| `response_hash` | response 的 SHA256 前 16 位 |
+
+### 黑板变更日志
+
+每轮结束后记录 Fact/Hint/Intent 的 diff：
+
+```json
+{
+  "event": "blackboard_diff",
+  "round": 3,
+  "facts_added": [...],
+  "facts_removed": [],
+  "hints_added": [...],
+  "intents_replaced": [...]
+}
+```
+
+### 审计日志（持久化）
+
+所有持久化日志写入 `~/.fih-emergence/logs/`，按 session_id 分文件：
+
+- `session_{id}.log` — 本会话的结构化日志
+- `error_{date}.log` — 全局错误日志（所有 sessions）
+
+### 错误追踪
+
+每个 ERROR 级别日志必须包含：
+
+- `session_id`
+- `round`（若适用）
+- `node`
+- `error_code`（见下表）
+- `stack_trace`（Python traceback）
+
+| error_code | 说明 |
+|------------|------|
+| `LLM_TIMEOUT` | LLM 调用超时 |
+| `LLM_RATE_LIMIT` | 429 错误 |
+| `LLM_SERVER_ERROR` | 5xx 错误 |
+| `SQLITE_WRITE_FAIL` | SQLite 写入失败 |
+| `CHECKPOINT_CORRUPT` | LangGraph checkpoint 损坏 |
+| `WORKER_EMPTY_OUTPUT` | Worker 产出为空 |
+| `AUDIT_FAILED` | Auditor 审计失败 |
 
 ---
 
