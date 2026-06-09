@@ -1,10 +1,10 @@
 """FIH Emergence Roles."""
 
+from fih_emergence.roles.auditor import Auditor
+from fih_emergence.roles.human_gate import HumanGateClient
 from fih_emergence.roles.manager import Manager
 from fih_emergence.roles.proposer import Proposer
 from fih_emergence.roles.worker import Worker, create_worker
-from fih_emergence.roles.auditor import Auditor
-from fih_emergence.roles.human_gate import HumanGateClient
 
 __all__ = [
     "Manager",

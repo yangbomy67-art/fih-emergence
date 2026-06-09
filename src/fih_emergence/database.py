@@ -5,11 +5,10 @@ Based on SPEC_DataStructures.md §2
 """
 
 import json
-import os
-import aiosqlite
-from pathlib import Path
 from datetime import datetime
-from typing import Optional
+from pathlib import Path
+
+import aiosqlite
 
 # 数据目录
 DATA_DIR = Path.home() / ".fih-emergence"
@@ -113,7 +112,7 @@ async def create_session(
     now = datetime.utcnow().isoformat() + "Z"
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO session_meta 
+            """INSERT INTO session_meta
                (session_id, task_description, max_iterations, mode, created_at, updated_at, current_round, status)
                VALUES (?, ?, ?, 'FULL', ?, ?, 0, 'active')""",
             (session_id, task_description, max_iterations, now, now),
@@ -121,7 +120,7 @@ async def create_session(
         await db.commit()
 
 
-async def get_session(session_id: str) -> Optional[dict]:
+async def get_session(session_id: str) -> dict | None:
     """获取会话元数据"""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -150,20 +149,20 @@ async def save_snapshot(
     facts: list,
     hints: list,
     intents: list,
-    winner_intent: Optional[dict] = None,
-    worker_submissions: Optional[list] = None,
-    result_ei: Optional[float] = None,
-    pro_confidence: Optional[float] = None,
-    con_confidence: Optional[float] = None,
-    scores_4d: Optional[dict] = None,
+    winner_intent: dict | None = None,
+    worker_submissions: list | None = None,
+    result_ei: float | None = None,
+    pro_confidence: float | None = None,
+    con_confidence: float | None = None,
+    scores_4d: dict | None = None,
     valley_detected: bool = False,
-    proposal: Optional[str] = None,
+    proposal: str | None = None,
 ) -> None:
     """保存黑板快照"""
     now = datetime.utcnow().isoformat() + "Z"
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT OR REPLACE INTO blackboard_snapshots 
+            """INSERT OR REPLACE INTO blackboard_snapshots
                (session_id, round, facts, hints, intents, winner_intent, worker_submissions,
                 result_ei, pro_confidence, con_confidence, scores_4d, valley_detected, proposal, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -187,7 +186,7 @@ async def save_snapshot(
         await db.commit()
 
 
-async def get_snapshot(session_id: str, round_num: int) -> Optional[dict]:
+async def get_snapshot(session_id: str, round_num: int) -> dict | None:
     """获取黑板快照"""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
@@ -202,18 +201,18 @@ async def get_snapshot(session_id: str, round_num: int) -> Optional[dict]:
 async def save_ei_tracking(
     session_id: str,
     round_num: int,
-    intent_ei_scores: Optional[list] = None,
-    result_ei: Optional[float] = None,
-    result_ei_S1: Optional[float] = None,
-    result_ei_S2: Optional[float] = None,
-    result_ei_S3: Optional[float] = None,
-    scores_4d: Optional[dict] = None,
+    intent_ei_scores: list | None = None,
+    result_ei: float | None = None,
+    result_ei_s1: float | None = None,  # noqa: N803
+    result_ei_s2: float | None = None,  # noqa: N803
+    result_ei_s3: float | None = None,  # noqa: N803
+    scores_4d: dict | None = None,
 ) -> None:
     """保存 EI 追踪数据"""
     now = datetime.utcnow().isoformat() + "Z"
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT OR REPLACE INTO ei_tracking 
+            """INSERT OR REPLACE INTO ei_tracking
                (session_id, round, intent_ei_scores, result_ei, result_ei_S1, result_ei_S2, result_ei_S3, scores_4d, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
@@ -221,9 +220,9 @@ async def save_ei_tracking(
                 round_num,
                 json.dumps(intent_ei_scores) if intent_ei_scores else None,
                 result_ei,
-                result_ei_S1,
-                result_ei_S2,
-                result_ei_S3,
+                result_ei_s1,
+                result_ei_s2,
+                result_ei_s3,
                 json.dumps(scores_4d) if scores_4d else None,
                 now,
             ),
@@ -236,14 +235,14 @@ async def log_human_intervention(
     round_num: int,
     reason: str,
     action: str,
-    content: Optional[dict] = None,
-    rerun_worker: Optional[str] = None,
+    content: dict | None = None,
+    rerun_worker: str | None = None,
 ) -> None:
     """记录人工介入日志"""
     now = datetime.utcnow().isoformat() + "Z"
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            """INSERT INTO human_intervention_log 
+            """INSERT INTO human_intervention_log
                (session_id, round, reason, action, content, rerun_worker, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (

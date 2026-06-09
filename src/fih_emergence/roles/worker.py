@@ -9,8 +9,8 @@ Responsibilities:
 3. Phase B: Auditor 检查双 Worker 信心，若差距大则弱势方重产
 """
 
+from fih_emergence.prompts import WORKER_REBUTTAL, WORKER_SELF_DEBATE
 from fih_emergence.state import FIHState
-from fih_emergence.prompts import WORKER_SELF_DEBATE, WORKER_REBUTTAL
 
 
 class Worker:

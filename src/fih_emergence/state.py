@@ -4,7 +4,8 @@ FIH State - Global state definition for the multi-agent collaboration system.
 Based on SPEC_DataStructures.md
 """
 
-from typing import TypedDict, Literal, Optional
+from typing import Literal, TypedDict
+
 from pydantic import BaseModel, Field
 
 
@@ -32,7 +33,7 @@ class Intent(BaseModel):
     content: str
     type: Literal["待验证", "待探索", "待决策"]  # 三类 Intent
     supporting_facts: list[str] = Field(default_factory=list)  # 支撑 Fact IDs
-    ei_score: Optional[float] = None
+    ei_score: float | None = None
 
 
 class WorkerSubmission(BaseModel):
@@ -47,12 +48,12 @@ class AuditResult(BaseModel):
     """Auditor 审计结果"""
     passed: bool
     scores_4d: dict[str, float] = Field(default_factory=dict)  # A/B/C/D
-    result_ei: Optional[float] = None
+    result_ei: float | None = None
     fact_candidates: list[Fact] = Field(default_factory=list)
     hint_candidates: list[Hint] = Field(default_factory=list)
     valley_detected: bool = False
-    valley_report: Optional[dict] = None
-    reason: Optional[str] = None
+    valley_report: dict | None = None
+    reason: str | None = None
 
 
 class FIHState(TypedDict, total=False):

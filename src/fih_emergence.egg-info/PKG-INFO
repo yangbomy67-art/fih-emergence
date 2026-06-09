@@ -1,0 +1,95 @@
+Metadata-Version: 2.4
+Name: fih-emergence
+Version: 0.1.0
+Summary: FIH (Fact-Intent-Hint) Multi-Agent Collaboration Framework
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.115.0
+Requires-Dist: uvicorn[standard]>=0.32.0
+Requires-Dist: langgraph>=0.2.0
+Requires-Dist: langchain-core>=0.3.0
+Requires-Dist: pydantic>=2.10.0
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: aiosqlite>=0.20.0
+Requires-Dist: pydantic-settings>=2.6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=8.3.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.24.0; extra == "dev"
+Requires-Dist: pytest-cov>=6.0.0; extra == "dev"
+Requires-Dist: ruff>=0.8.0; extra == "dev"
+Requires-Dist: httpx>=0.27.0; extra == "dev"
+
+# FIH Emergence
+
+**涌现不是恩赐，是被治理的产物。**
+
+FIH (Fact-Intent-Hint) 多智能体协作框架，基于因果涌现理论实现自主推理。
+
+## 理论基础
+
+- **霍兰德 CGP**：Fact / Hint 是制约，Intent 竞争是生成 【Intent竞争】
+- **丹尼特多重草稿**：候选 Intent 并行竞争，胜出即聚焦 【多草稿生成】
+- **古德费洛 GAN**：每个 Intent 内嵌正/反、判三方对抗 【GAN对抗】
+- **霍尔因果涌现**：以 EI 增益判定宏观 Intent 是否真正"自主"于微观 Facts 【EI 启发式评估】【EI 追踪】
+- **马尔可夫粗粒化**：动态寻找最优聚合粒度，避免过细或过粗 【EI 追踪】
+
+## 架构
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Human Gate (客户端)                              │
+│   ┌─────────────────────┐              ┌─────────────────────┐          │
+│   │    CLI: $ fih-hg    │              │  Hermes Skill       │          │
+│   │  start/status/...   │              │    /fih start       │          │
+│   └──────────┬──────────┘              └──────────┬──────────┘          │
+│              │                                      │                      │
+│              └──────────────┬───────────────────────┘                      │
+│                             ↓                                              │
+│                    HTTP + WebSocket                                       │
+│                             ↓                                              │
+├────────────────────────────────────────────────────────────────────────────┤
+│                      FIH Backend Service                                  │
+│                                                                             │
+│   ┌─────────────────────────────────────────────────────────────────┐    │
+│   │                     LangGraph 工作流                            │    │
+│   │  Manager → Proposer → Auditor → Workers → Manager (循环)       │    │
+│   └─────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│   黑板状态: Facts (只读) | Hints (累积) | Intents (每轮重置) | Round      │
+└────────────────────────────────────────────────────────────────────────────┘
+
+图例: ─── HTTP 数据流    ═══ WebSocket 推送(4条件)
+```
+
+## 核心概念
+
+- **Fact**：硬边界 / 已验证真值。只读。
+- **Intent**：当前轮次自主声明的假设或方向。
+- **Hint**：环境原始输入，未经解读的素材。
+- **Round**：当前轮次计数器，用于多轮趋势分析（低谷检测、EI追踪）。
+
+## 角色
+
+- **Manager**：发布主题、确认 Intent (三要素)、汇总裁决、低谷穿越执行、唯一 Human Gate 通信者
+- **Proposer**：多草稿生成、Intent 竞争
+- **Worker**：双 Worker GAN 对抗、Insight 产出、Next Intent 建议（微观输入/校准/EI追踪）
+- **Auditor**：事前审计 (Intent)、事后审计 (Insight)、低谷识别
+- **Human Gate**：独立 CLI + Hermes Skill 双形态，通过 HTTP API 与后端通信
+
+## 流程
+
+```
+① 黑板初始化 → ② Manager 发布主题 → ③ Proposer 多草稿生成 
+→ ④ Manager 确认 Intent → ⑤ Auditor 事前审计
+→ ⑥ 双 Worker GAN 对抗 (Phase A/B) → ⑦ Auditor 事后审计
+→ ⑧ Manager 汇总裁决 → ⑨ Human Gate 中断?
+       是 → 人工操作 → 图从 Manager 恢复
+       否 → 下一轮 / 终止 → 回到空闲
+```
+
+Round 1: 主题来自 Human Gate CLI (/start <topic>)
+Round N: 主题来自 Manager (基于上一轮 Next Intent 建议)
+
+## 文档
+
+详见 `docs/SPEC.md`

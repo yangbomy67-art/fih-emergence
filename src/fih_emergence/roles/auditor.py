@@ -9,12 +9,9 @@ Responsibilities:
 3. 检测 4 条件并通知 Manager
 """
 
-from typing import Optional
-from fih_emergence.state import FIHState
 from fih_emergence.prompts import (
-    AUDITOR_PRE_CHECK,
     AUDITOR_POST_CHECK,
-    AUDITOR_VALLEY_CHECK,
+    AUDITOR_PRE_CHECK,
 )
 
 
@@ -89,10 +86,10 @@ class Auditor:
         # 实际应由 LLM 填充四维评分
         scores_4d = {"A": 7, "B": 7, "C": 7, "D": 7}  # 默认
 
-        result_ei_S1 = 4  # 可交付形态
-        result_ei_S2 = 4  # Fact引用
-        result_ei_S3 = 7  # 新增视角
-        result_ei = result_ei_S1 + result_ei_S2 + result_ei_S3
+        result_ei_s1 = 4  # 可交付形态  # noqa: N806
+        result_ei_s2 = 4  # Fact引用  # noqa: N806
+        result_ei_s3 = 7  # 新增视角  # noqa: N806
+        result_ei = result_ei_s1 + result_ei_s2 + result_ei_s3
 
         passed = result_ei >= 15 and all(s >= 7 for s in scores_4d.values())
 
@@ -100,9 +97,9 @@ class Auditor:
             "passed": passed,
             "scores_4d": scores_4d,
             "result_ei": result_ei,
-            "result_ei_S1": result_ei_S1,
-            "result_ei_S2": result_ei_S2,
-            "result_ei_S3": result_ei_S3,
+            "result_ei_S1": result_ei_s1,
+            "result_ei_S2": result_ei_s2,
+            "result_ei_S3": result_ei_s3,
             "fact_candidates": [],  # 从 insight 提取
             "hint_candidates": [],  # 从黑板匹配
             "valley_detected": False,

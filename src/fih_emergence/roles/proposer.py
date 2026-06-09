@@ -9,8 +9,8 @@ Responsibilities:
 3. 缺失补足（被动响应）：仅当 Manager 判定缺失时补生成
 """
 
-from fih_emergence.state import FIHState
 from fih_emergence.prompts import PROPOSER_GENERATE, PROPOSER_SUPPLEMENT
+from fih_emergence.state import FIHState
 
 
 class Proposer:

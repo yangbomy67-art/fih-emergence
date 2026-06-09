@@ -11,7 +11,7 @@ Architecture:
 
 import asyncio
 import json
-from typing import Optional
+
 import aiohttp
 
 
@@ -20,7 +20,7 @@ class HumanGateClient:
 
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
-        self.session_id: Optional[str] = None
+        self.session_id: str | None = None
 
     async def start(self, topic: str, facts: list[str] = None, hints: list[str] = None) -> dict:
         """

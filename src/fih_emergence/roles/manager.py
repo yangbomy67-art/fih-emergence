@@ -10,13 +10,10 @@ Responsibilities:
 4. 唯一与 Human Gate 通信的接口
 """
 
-from typing import Optional
-from fih_emergence.state import FIHState
 from fih_emergence.prompts import (
     MANAGER_INITIATE,
-    MANAGER_CHECK_INTERRUPT,
-    MANAGER_DECIDE_NEXT,
 )
+from fih_emergence.state import FIHState
 
 
 class Manager:

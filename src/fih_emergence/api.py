@@ -6,22 +6,15 @@ Based on SPEC_API.md
 
 import uuid
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, List
 
-from fih_emergence.state import create_initial_state
 from fih_emergence.database import (
-    init_db,
     create_session,
-    get_session,
-    update_session,
-    save_snapshot,
-    log_human_intervention,
+    init_db,
 )
-from fih_emergence.graph import run_session, resume_session
-
 
 # =======================
 # Lifespan
@@ -62,13 +55,13 @@ app.add_middleware(
 
 class StartRequest(BaseModel):
     topic: str = Field(..., description="任务主题")
-    facts: Optional[List[str]] = Field(default=None, description="初始 Facts")
-    hints: Optional[List[str]] = Field(default=None, description="初始 Hints")
+    facts: list[str] | None = Field(default=None, description="初始 Facts")
+    hints: list[str] | None = Field(default=None, description="初始 Hints")
 
 
 class InterruptRequest(BaseModel):
     operation: str = Field(..., description="操作类型")
-    content: Optional[str] = Field(default=None, description="操作内容")
+    content: str | None = Field(default=None, description="操作内容")
 
 
 # =======================
