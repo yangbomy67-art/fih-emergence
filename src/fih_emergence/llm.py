@@ -136,7 +136,7 @@ LLM_PROVIDERS = {
 def create_llm_client(
     provider: str = None,
     api_key: str = None,
-    base_url: str = None,
+    base_url: str | None = None,
     model: str = None,
 ) -> BaseLLMClient:
     """

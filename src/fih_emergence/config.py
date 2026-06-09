@@ -22,6 +22,8 @@ class ModelConfig:
 
     provider: str = "custom"
     model: str = "glm-4-flash"
+    api_url: str = ""  # API 端点 URL
+    api_key: str = ""  # API 密钥（支持从环境变量加载）
     temperature: float = 0.7
     max_tokens: int = 2048
 
@@ -153,10 +155,24 @@ class Config:
             config.ei = EIConfig(**data["ei"])
 
         if "interrupt" in data:
-            config.interrupt = InterruptConfig(**data["interrupt"])
+            ic = data["interrupt"]
+            # 展平嵌套结构
+            config.interrupt = InterruptConfig(
+                dominant_threshold=ic.get("confidence_anomaly", {}).get("dominant_threshold", 90),
+                weak_threshold=ic.get("confidence_anomaly", {}).get("weak_threshold", 30),
+                stalemate_min=ic.get("confidence_anomaly", {}).get("stalemate_min", 45),
+                stalemate_max=ic.get("confidence_anomaly", {}).get("stalemate_max", 55),
+                no_fact_rounds_threshold=ic.get("output_stagnation", {}).get("no_fact_rounds_threshold", 3),
+                consecutive_same_output_threshold=ic.get("output_stagnation", {}).get("consecutive_same_output_threshold", 2),
+            )
 
         if "valley" in data:
-            config.valley = ValleyConfig(**data["valley"])
+            vc = data["valley"]
+            config.valley = ValleyConfig(
+                window_size=vc.get("window_size", 3),
+                ei_low_threshold=vc.get("ei_low_threshold", 10),
+                no_fact_rounds_threshold=vc.get("no_fact_rounds_threshold", 3),
+            )
 
         if "logging" in data:
             config.logging = LoggingConfig(**data["logging"])
@@ -173,8 +189,13 @@ class Config:
             # 默认返回 Custom 客户端
             return create_llm_client(provider="custom")
 
+        # api_key 优先使用配置，其次从环境变量
+        api_key = model_config.api_key or os.getenv("LLM_API_KEY", "")
+        
         return create_llm_client(
             provider=model_config.provider,
+            api_key=api_key,
+            base_url=model_config.api_url or None,
             model=model_config.model,
         )
 

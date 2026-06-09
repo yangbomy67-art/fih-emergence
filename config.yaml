@@ -27,6 +27,8 @@ models:
   manager:
     provider: "custom"
     model: "glm-4-flash"
+    api_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key: ""  # 从环境变量或 .env 加载
     temperature: 0.7
     max_tokens: 2048
 
@@ -34,6 +36,8 @@ models:
   proposer:
     provider: "custom"
     model: "glm-4-flash"
+    api_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key: ""
     temperature: 0.8
     max_tokens: 2048
 
@@ -41,6 +45,8 @@ models:
   worker:
     provider: "custom"
     model: "glm-5.1"
+    api_url: "https://open.bigmodel.cn/api/paas/v4"
+    api_key: ""
     temperature: 0.7
     max_tokens: 4096
 
@@ -48,6 +54,8 @@ models:
   auditor:
     provider: "custom"
     model: "Qwen3-235B-A22B"
+    api_url: ""  # 本地部署
+    api_key: ""
     temperature: 0.5
     max_tokens: 2048
 
