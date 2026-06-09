@@ -9,6 +9,7 @@ Responsibilities:
 3. 缺失补足（被动响应）：仅当 Manager 判定缺失时补生成
 """
 
+from fih_emergence.llm import BaseLLMClient, get_proposer_client
 from fih_emergence.prompts import PROPOSER_GENERATE, PROPOSER_SUPPLEMENT
 from fih_emergence.state import FIHState
 
@@ -16,8 +17,8 @@ from fih_emergence.state import FIHState
 class Proposer:
     """FIH Proposer 角色"""
 
-    def __init__(self, llm_client=None):
-        self.llm_client = llm_client
+    def __init__(self, llm_client: BaseLLMClient = None):
+        self.llm_client = llm_client or get_proposer_client()
 
     async def generate_intents(self, state: FIHState) -> dict:
         """

@@ -10,6 +10,7 @@ Responsibilities:
 4. 唯一与 Human Gate 通信的接口
 """
 
+from fih_emergence.llm import BaseLLMClient, get_manager_client
 from fih_emergence.prompts import (
     MANAGER_INITIATE,
 )
@@ -19,8 +20,9 @@ from fih_emergence.state import FIHState
 class Manager:
     """FIH Manager 角色"""
 
-    def __init__(self, llm_client=None):
-        self.llm_client = llm_client
+    def __init__(self, llm_client: BaseLLMClient = None):
+        # 如果没有提供 LLM 客户端，自动创建
+        self.llm_client = llm_client or get_manager_client()
 
     async def initiate_round(
         self,

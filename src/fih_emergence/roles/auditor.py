@@ -9,6 +9,7 @@ Responsibilities:
 3. 检测 4 条件并通知 Manager
 """
 
+from fih_emergence.llm import BaseLLMClient, get_auditor_client
 from fih_emergence.prompts import (
     AUDITOR_POST_CHECK,
     AUDITOR_PRE_CHECK,
@@ -18,8 +19,8 @@ from fih_emergence.prompts import (
 class Auditor:
     """FIH Auditor 角色"""
 
-    def __init__(self, llm_client=None):
-        self.llm_client = llm_client
+    def __init__(self, llm_client: BaseLLMClient = None):
+        self.llm_client = llm_client or get_auditor_client()
 
     async def pre_audit_intent(
         self,

@@ -9,6 +9,7 @@ Responsibilities:
 3. Phase B: Auditor 检查双 Worker 信心，若差距大则弱势方重产
 """
 
+from fih_emergence.llm import BaseLLMClient, get_worker_client
 from fih_emergence.prompts import WORKER_REBUTTAL, WORKER_SELF_DEBATE
 from fih_emergence.state import FIHState
 
@@ -19,12 +20,12 @@ class Worker:
     WORKER_P = "worker_p"
     WORKER_N = "worker_n"
 
-    def __init__(self, worker_id: str, llm_client=None):
+    def __init__(self, worker_id: str, llm_client: BaseLLMClient = None):
         if worker_id not in (self.WORKER_P, self.WORKER_N):
             raise ValueError(f"Invalid worker_id: {worker_id}")
         self.worker_id = worker_id
         self.worker_type = "正方" if worker_id == self.WORKER_P else "反方"
-        self.llm_client = llm_client
+        self.llm_client = llm_client or get_worker_client(worker_id)
 
     async def generate_insight(
         self,
