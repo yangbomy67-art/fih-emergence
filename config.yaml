@@ -26,18 +26,18 @@ models:
   # Manager: 决策/汇总 (SPEC_角色.md)
   manager:
     provider: "custom"
-    model: "glm-4-flash"
-    api_url: "https://open.bigmodel.cn/api/paas/v4"
-    api_key: ""  # 从环境变量或 .env 加载
+    model: "MiniMax-M2.5"
+    api_url: "https://aigw-gzgy2.cucloud.cn:8443/v1"
+    api_key: "sk-sp-FxnlNLvZqHZWT5YJ2uRCq6rfBVUls95p"
     temperature: 0.7
     max_tokens: 2048
 
   # Proposer: 生成候选 Intent
   proposer:
     provider: "custom"
-    model: "glm-4-flash"
-    api_url: "https://open.bigmodel.cn/api/paas/v4"
-    api_key: ""
+    model: "kimi-2.6"
+    api_url: "https://aigw-gzgy2.cucloud.cn:8443/v1"
+    api_key: "sk-sp-FxnlNLvZqHZWT5YJ2uRCq6rfBVUls95p"
     temperature: 0.8
     max_tokens: 2048
 
@@ -45,17 +45,17 @@ models:
   worker:
     provider: "custom"
     model: "glm-5.1"
-    api_url: "https://open.bigmodel.cn/api/paas/v4"
-    api_key: ""
+    api_url: "https://aigw-gzgy2.cucloud.cn:8443/v1"
+    api_key: "sk-sp-FxnlNLvZqHZWT5YJ2uRCq6rfBVUls95p"
     temperature: 0.7
     max_tokens: 4096
 
   # Auditor: 审计/EI 评估
   auditor:
     provider: "custom"
-    model: "Qwen3-235B-A22B"
-    api_url: ""  # 本地部署
-    api_key: ""
+    model: "Qwen3.5-397B-A17B"
+    api_url: "https://aigw-gzgy2.cucloud.cn:8443/v1"
+    api_key: "sk-sp-FxnlNLvZqHZWT5YJ2uRCq6rfBVUls95p"
     temperature: 0.5
     max_tokens: 2048
 
