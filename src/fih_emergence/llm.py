@@ -119,25 +119,25 @@ class CustomClient(BaseLLMClient):
     async def chat(self, messages: list[dict], temperature: float = 0.7, max_tokens: int = 2048, **kwargs) -> LLMResponse:
         """调用自定义 API"""
         import aiohttp
-        
+
         if not self.api_key:
             return LLMResponse(content="[Mock] No API Key", model=self.model)
-        
+
         if not self.base_url:
             return LLMResponse(content="[Mock] No API URL", model=self.model)
-        
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        
+
         payload = {
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -152,11 +152,11 @@ class CustomClient(BaseLLMClient):
                             content=f"[API Error {response.status}] {error_text[:200]}",
                             model=self.model,
                         )
-                    
+
                     data = await response.json()
                     content = data["choices"][0]["message"]["content"]
                     usage = data.get("usage", {})
-                    
+
                     return LLMResponse(
                         content=content,
                         model=self.model,

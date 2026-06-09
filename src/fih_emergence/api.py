@@ -15,7 +15,9 @@ from fih_emergence.config import get_config
 from fih_emergence.database import (
     create_session,
     init_db,
+    update_session,
 )
+from fih_emergence.graph import run_session, workflow
 
 # =======================
 # Lifespan
@@ -63,6 +65,8 @@ class StartRequest(BaseModel):
     topic: str = Field(..., description="任务主题")
     facts: list[str] | None = Field(default=None, description="初始 Facts")
     hints: list[str] | None = Field(default=None, description="初始 Hints")
+    intents: list[str] | None = Field(default=None, description="初始 Intents")
+    max_rounds: int | None = Field(default=20, description="最大轮次")
 
 
 class InterruptRequest(BaseModel):
@@ -84,17 +88,26 @@ async def health():
 async def start_task(req: StartRequest):
     """开始任务（Round 1）"""
     session_id = str(uuid.uuid4())
+    max_rounds = req.max_rounds or 20
 
     # 创建会话
     await create_session(
         session_id=session_id,
         task_description=req.topic,
-        max_iterations=20,
+        max_iterations=max_rounds,
     )
 
-    # 运行工作流（后台）
-    # 注意：实际应该异步运行，这里简化处理
-    # 实际实现应该启动后台任务
+    # 后台运行工作流
+    import asyncio
+    asyncio.create_task(
+        run_session(
+            session_id=session_id,
+            task_description=req.topic,
+            initial_facts=req.facts,
+            initial_hints=req.hints,
+            max_iterations=max_rounds,
+        )
+    )
 
     return {
         "status": "started",
@@ -106,14 +119,11 @@ async def start_task(req: StartRequest):
 @app.get("/status")
 async def get_status():
     """查看状态"""
-    # 简化：返回示例状态
+    # TODO: 从数据库读取真实状态
     return {
-        "round": 1,
-        "topic": "分析经济增长放缓的原因",
-        "facts": [],
-        "hints": [],
-        "intents": [],
-        "status": "idle",
+        "status": "running",
+        "message": "工作流在后台执行中",
+        "note": "简化版 - 返回静态示例",
     }
 
 

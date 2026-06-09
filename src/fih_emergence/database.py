@@ -37,7 +37,7 @@ async def init_db(db_path: str = None) -> None:
         set_db_path(db_path)  # 保存路径供其他函数使用
     else:
         db_file = get_db_path()
-    
+
     db_file.parent.mkdir(parents=True, exist_ok=True)
 
     async with aiosqlite.connect(db_file) as db:

@@ -194,7 +194,7 @@ class Config:
         # 兼容配置文件中空的 api_key
         if not api_key and model_config.api_key:
             api_key = model_config.api_key
-        
+
         return create_llm_client(
             provider=model_config.provider,
             api_key=api_key,
