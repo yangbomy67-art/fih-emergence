@@ -68,3 +68,58 @@
 ## 下一步
 
 修复 Major 问题，实现回退逻辑。
+
+---
+
+## 新增内容审查 (2026-06-10)
+
+### 审查范围
+- 日志策略 (新增)
+- 监控指标 (新增)
+- Markdown 结果导出 (新增)
+
+### 第一次审查
+
+**总分：32/36**
+
+| 维度 | 分数 |
+|------|:----:|
+| Intent Clarity | 3 |
+| Scope Boundary | 3 |
+| Role Boundary | 3 |
+| Flow Completeness | 3 |
+| State Model | 3 |
+| Data Model | 3 |
+| Failure Modes | 3 |
+| Permission Boundary | 3 |
+| Observability | 3 |
+| Testability | 3 |
+| Implementation Risk | 2 |
+| Theory Alignment | 3 |
+
+### 第二次审查
+
+**总分：31/36**
+
+（与第一次差异：Data Model 2分，insights表设计可简化）
+
+### 共同发现的问题
+
+#### Minor (1)
+
+| ID | 问题 | 位置 |
+|----|------|------|
+| M1 | 核心洞察生成逻辑复杂，需在实现时处理 | Markdown导出 |
+
+#### Nit (1)
+
+| ID | 问题 | 位置 |
+|----|------|------|
+| T1 | insights 表设计可简��（与 intents 合并） | 数据模型 |
+
+### 审查结论
+
+**通过**（31/36，无 Blocker）
+
+- 日志策略 + 监控指标 + Markdown 导出 设计合理
+- 核心洞察生成是主要实现风险（可控）
