@@ -53,6 +53,42 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# =======================
+# Error Handlers
+# =======================
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from fih_emergence.exceptions import FIHException
+
+
+@app.exception_handler(FIHException)
+async def fih_exception_handler(request: Request, exc: FIHException):
+    """FIH 自定义异常处理"""
+    return JSONResponse(
+        status_code=exc.http_status,
+        content=exc.to_dict(),
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """通用异常处理"""
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "INTERNAL_ERROR",
+            "message": "服务器内部错误",
+            "details": {"type": type(exc).__name__},
+        },
+    )
+
+
+# =======================
+# WebSocket
+# =======================
+
+# CORS 中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
