@@ -31,6 +31,10 @@ from fih_emergence.graph import run_session, workflow
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
+    # 初始化日志
+    from fih_emergence.logging_config import setup_logging
+    setup_logging()
+    
     # 加载配置（指定默认路径）
     from pathlib import Path
     config_path = Path(__file__).parent.parent.parent / "config.yaml"
@@ -127,6 +131,17 @@ class InterruptRequest(BaseModel):
 async def health():
     """健康检查"""
     return {"status": "healthy", "service": "fih-emergence"}
+
+
+@app.get(
+    "/metrics",
+    summary="查询监控指标",
+    description="返回任务统计、LLM统计、业务统计",
+)
+async def get_metrics():
+    """查询监控指标"""
+    from fih_emergence.metrics import get_metrics
+    return get_metrics()
 
 
 @app.post(

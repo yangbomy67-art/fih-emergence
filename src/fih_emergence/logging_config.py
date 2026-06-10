@@ -6,13 +6,24 @@
 
 import logging
 import sys
+import os
+from pathlib import Path
+from datetime import datetime
 from typing import Any
 
 from fih_emergence.errors import ErrorCode
 
 
-def setup_logging(level: str = "INFO") -> None:
+def setup_logging(level: str = "INFO", log_dir: str = "logs") -> None:
     """配置日志"""
+    # 确保日志目录存在
+    log_path = Path(log_dir)
+    log_path.mkdir(parents=True, exist_ok=True)
+    
+    # 今天的日志文件
+    today = datetime.now().strftime("%Y%m%d")
+    log_file = log_path / f"fih-{today}.log"
+    
     # 根日志级别
     logging.basicConfig(
         level=getattr(logging, level.upper()),
@@ -20,6 +31,7 @@ def setup_logging(level: str = "INFO") -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[
             logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_file, encoding="utf-8"),
         ],
     )
 
@@ -27,6 +39,22 @@ def setup_logging(level: str = "INFO") -> None:
     logging.getLogger("aiohttp").setLevel(logging.WARNING)
     logging.getLogger("aiosqlite").setLevel(logging.WARNING)
     logging.getLogger("uvicorn").setLevel(logging.INFO)
+    
+    # 清理 30 天前的日志
+    cleanup_old_logs(log_path, days=30)
+
+
+def cleanup_old_logs(log_dir: Path, days: int = 30) -> None:
+    """清理旧日志文件"""
+    from datetime import timedelta
+    cutoff = datetime.now() - timedelta(days=days)
+    
+    for log_file in log_dir.glob("fih-*.log"):
+        if log_file.stat().st_mtime < cutoff.timestamp():
+            try:
+                log_file.unlink()
+            except Exception:
+                pass
 
 
 # 预定义的日志记录器
