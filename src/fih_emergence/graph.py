@@ -360,11 +360,18 @@ async def run_session(
             print(f"  → 达到最大轮数 {max_iterations}，终止")
             
             # 保存轮次数据到历史
+            valley_signals = state.get("valley_signals", [])
+            round_ei = 0
+            for sig in valley_signals:
+                if sig.get("round") == round_num:
+                    round_ei = sig.get("ei_score", 0)
+                    break
+            
             rounds_history.append({
                 "round": round_num,
                 "intents": state.get("intents", []),
                 "worker_submissions": state.get("worker_submissions", []),
-                "ei_score": state.get("ei_score", 0) or 0,
+                "ei_score": round_ei,
                 "facts": state.get("facts", []),
                 "hints": state.get("hints", []),
             })
@@ -446,11 +453,19 @@ async def run_session(
         )
         
         # 保存轮次数据到历史（每轮结束后）
+        # 从 valley_signals 获取本轮 EI
+        valley_signals = state.get("valley_signals", [])
+        round_ei = 0
+        for sig in valley_signals:
+            if sig.get("round") == round_num:
+                round_ei = sig.get("ei_score", 0)
+                break
+        
         rounds_history.append({
             "round": round_num,
             "intents": state.get("intents", []),
             "worker_submissions": state.get("worker_submissions", []),
-            "ei_score": state.get("ei_score", 0) or 0,
+            "ei_score": round_ei,
             "facts": state.get("facts", []),
             "hints": state.get("hints", []),
         })
