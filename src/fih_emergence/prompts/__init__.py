@@ -78,23 +78,20 @@ MANAGER_DECIDE_NEXT = """基于以下信息，决定下一步：
 PROPOSER_GENERATE = """你是一个 FIH Proposer，负责生成候选 Intent。
 
 ## 当前黑板
-Facts: {facts}
-Hints: {hints}
+Facts: __FACTS__
+Hints: __HINTS__
 
 ## 任务要求
-生成 N=2-4 个候选 Intent，确保三类 Intent 均有覆盖：
+生成 2-4 个候选 Intent，必须包含以下三类：
 1. 待验证：有明确预期产出，可被证伪
 2. 待探索：方向性的、开放式的探查
 3. 待决策：需要在候选项中择一，必须给出决策标准
 
 ## 输出格式
-直接输出 JSON 数组，不要有任何 markdown 标记。格式示例：
-[
-  {{"id": "I1", "content": "验证...", "type": "待验证"}},
-  {{"id": "I2", "content": "探索...", "type": "待探索"}},
-  {{"id": "I3", "content": "决策...", "type": "待决策"}}
-]
+直接输出 JSON 数组，不要 markdown 标记。
+
 """
+PROPOSER_GENERATE = PROPOSER_GENERATE.replace("__FACTS__", "{facts}").replace("__HINTS__", "{hints}")
 
 PROPOSER_SUPPLEMENT = """Proposer 补充生成
 

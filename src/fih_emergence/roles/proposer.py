@@ -60,10 +60,25 @@ class Proposer:
             parsed = json.loads(content.strip())
             if isinstance(parsed, list):
                 for item in parsed:
+                    # 兼容多种字段名
+                    intent_id = item.get("id", item.get("intent_id", f"I{len(intents)+1}"))
+                    intent_content = (
+                        item.get("content") or 
+                        item.get("intent") or 
+                        item.get("content_text") or 
+                        item.get("description") or
+                        str(item)  # fallback: 整个对象转字符串
+                    )
+                    intent_type = (
+                        item.get("type") or 
+                        item.get("category") or 
+                        item.get("intent_type") or 
+                        "待探索"
+                    )
                     intents.append({
-                        "id": item.get("id", f"I{len(intents)+1}"),
-                        "content": item.get("content", ""),
-                        "type": item.get("type", "待探索"),
+                        "id": intent_id,
+                        "content": intent_content[:200] if intent_content else "",
+                        "type": intent_type,
                         "source": "proposer",
                     })
                 if intents:
@@ -82,10 +97,24 @@ class Proposer:
             
             if isinstance(parsed, list):
                 for item in parsed:
+                    intent_id = item.get("id", item.get("intent_id", f"I{len(intents)+1}"))
+                    intent_content = (
+                        item.get("content") or 
+                        item.get("intent") or 
+                        item.get("content_text") or 
+                        item.get("description") or
+                        str(item)
+                    )
+                    intent_type = (
+                        item.get("type") or 
+                        item.get("category") or 
+                        item.get("intent_type") or 
+                        "待探索"
+                    )
                     intents.append({
-                        "id": item.get("id", f"I{len(intents)+1}"),
-                        "content": item.get("content", ""),
-                        "type": item.get("type", "待探索"),
+                        "id": intent_id,
+                        "content": intent_content[:200],
+                        "type": intent_type,
                         "source": "proposer",
                     })
                 return intents
