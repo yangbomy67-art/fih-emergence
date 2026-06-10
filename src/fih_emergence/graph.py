@@ -162,11 +162,16 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     valley_type = ""
     valley_operation = "none"
     
-    if no_fact_rounds >= 3:
+    if no_fact_rounds >= 4:
+        # 连续 4+ 轮无 Fact+ → 低谷穿越失败，触发人工介入
         valley_detected = True
         valley_type = "no_fact"
-        # 连续 3 轮无新 Fact，触发强制人工介入
         valley_operation = "force_human_intervention"
+    elif no_fact_rounds >= 3:
+        # 连续 3 轮无 Fact+ → 尝试低谷穿越
+        valley_detected = True
+        valley_type = "no_fact"
+        valley_operation = "valley_traverse"
     elif len(valley_signals) >= 3:
         # 检查 EI 持续低下
         recent_ei = [s.get("ei_score", 0) for s in valley_signals[-3:]]
@@ -240,23 +245,26 @@ async def run_session(
         valley_detected = state.get("valley_detected", False)
         valley_operation = state.get("valley_operation", "none")
         
-        # 终止条��� 1: 达到 max_rounds
+        # 终止条件 1: 达到 max_rounds
         if round_num >= max_iterations:
             print(f"  → 达到最大轮数 {max_iterations}，终止")
             break
         
-        # 终止条件 2: 连续 3 轮同类低谷，强制人工介入
+        # 终止条件 2: 低谷穿越失败后，触发人工介入
         if valley_detected and valley_operation == "force_human_intervention":
             state["needs_human"] = True
-            state["human_intervention_reason"] = f"连续 3 轮无新 Fact+ (valley_type={state.get('valley_type')})"
-            print(f"  → 低谷升级，触发人工介入: {state['human_intervention_reason']}")
-            # 暂停等待人工介入（简化版：直接终止）
+            state["human_intervention_reason"] = f"低谷穿越失败 (valley_type={state.get('valley_type')})"
+            print(f"  → 低谷穿越失败，触发人工介入: {state['human_intervention_reason']}")
             break
         
-        # 低谷穿越：EI 持续低，尝试多样化（继续下一轮）
+        # 低谷穿越尝试：产出停滞后首次触发，继续下一轮
+        if valley_detected and valley_operation == "valley_traverse":
+            print(f"  → 检测到产出停滞，尝试低谷穿越（继续下一轮）")
+            # 继续下一轮，让 Proposer 生成多样化 Intent
+        
+        # 低谷穿越：EI 持续低，尝试多���化（继续下一轮）
         if valley_detected and valley_operation == "diversify_intent":
             print(f"  → 检测到 EI 持续低，尝试低谷穿越（继续）")
-            # 继续下一轮，让 Proposer 生成多样化 Intent
     
     # 全部完成后标记
     state["task_complete"] = True
