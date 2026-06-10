@@ -172,21 +172,17 @@ class Auditor:
         worker_n_confidence: float,
     ) -> tuple[bool, str]:
         """
-        检查置信度异常（4 条件之一）
+        检查是否需要弱势方重产（程序自动处理）
 
         Returns:
-            (是否异常, 类型)
+            (是否触发重产, 类型)
         """
-        # 正方>90% 且 反方<30%
-        if worker_p_confidence > 90 and worker_n_confidence < 30:
+        # 正方>80% 且 反方<30%
+        if worker_p_confidence > 80 and worker_n_confidence < 30:
             return True, "p_dominant"
 
-        # 反方>90% 且 正方<30%
-        if worker_n_confidence > 90 and worker_p_confidence < 30:
+        # 反方>80% 且 正方<30%
+        if worker_n_confidence > 80 and worker_p_confidence < 30:
             return True, "n_dominant"
-
-        # 45-55 僵持
-        if 45 <= worker_p_confidence <= 55 and 45 <= worker_n_confidence <= 55:
-            return True, "stalemate"
 
         return False, ""
