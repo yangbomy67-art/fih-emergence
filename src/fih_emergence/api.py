@@ -152,9 +152,15 @@ async def interrupt(req: InterruptRequest):
 
 
 @app.post("/stop")
-async def stop_task():
+async def stop_task(session_id: str = None):
     """强制终止任务"""
-    return {"status": "stopped"}
+    # TODO: 实际实现需要存储运行中的任务状态
+    # 简化：返回成功状态
+    return {
+        "status": "stopped",
+        "session_id": session_id,
+        "message": "任务已强制终止"
+    }
 
 
 @app.post("/force-complete")

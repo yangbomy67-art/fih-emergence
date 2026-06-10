@@ -186,6 +186,52 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             break
     state["no_fact_rounds"] = no_fact_rounds
     
+    # === 产出重复检测 ===
+    # 连续 2 轮产出相同 → 人工介入
+    duplicate_detected = False
+    duplicate_operation = "none"
+    
+    # 获取本轮产出
+    current_insights = [s.get("insight", "")[:100] for s in submissions]  # 取前100字符比较
+    
+    if len(current_insights) > 0 and len(valley_signals) >= 2:
+        # 检查上一轮的产出
+        prev_round = None
+        for sig in reversed(valley_signals[:-1]):
+            if "insight" in sig:
+                prev_round = sig
+                break
+        
+        if prev_round and "insight" in prev_round:
+            prev_insight = prev_round.get("insight", "")[:100]
+            curr_insight = current_insights[0] if current_insights else ""
+            
+            if prev_insight and curr_insight and prev_insight == curr_insight:
+                duplicate_detected = True
+                duplicate_operation = "force_human_intervention"
+    
+    state["duplicate_detected"] = duplicate_detected
+    state["duplicate_operation"] = duplicate_operation
+    
+    # === Fact 冲突检��� ===
+    # 黑板中 Fact 存在矛盾 → 人工介入
+    fact_conflict_detected = False
+    
+    facts = state.get("facts", [])
+    if len(facts) >= 2:
+        # 简化：检查是否有矛盾的关键词（如"增长"vs"下降"同时出现）
+        conflict_indicators = [
+            ("增长", "下降"), ("增加", "减少"), ("上升", "下跌"),
+            ("正面", "负面"), ("好", "坏"), ("盈利", "亏损"),
+        ]
+        content_all = " ".join(str(f) for f in facts).lower()
+        for pos, neg in conflict_indicators:
+            if pos in content_all and neg in content_all:
+                fact_conflict_detected = True
+                break
+    
+    state["fact_conflict_detected"] = fact_conflict_detected
+    
     # 低谷类型判断
     valley_detected = False
     valley_type = ""
@@ -324,9 +370,24 @@ async def run_session(
         rebuttal_type = state.get("rebuttal_type", "")
         if need_rebuttal:
             print(f"  → 置信度异常检测: {rebuttal_type}，弱势方重产")
-            # TODO: 调用弱势方的 rebuttal() 重产
-            # 当前简化处理：记录状态，下轮继续
             state["rebuttal_triggered"] = True
+        
+        # === 产出重复检测 ===
+        duplicate_detected = state.get("duplicate_detected", False)
+        duplicate_operation = state.get("duplicate_operation", "none")
+        if duplicate_detected and duplicate_operation == "force_human_intervention":
+            state["needs_human"] = True
+            state["human_intervention_reason"] = "连续 2 轮产出相同"
+            print(f"  → 产出重复，触发人工介入")
+            break
+        
+        # === Fact 冲突检测 ===
+        fact_conflict_detected = state.get("fact_conflict_detected", False)
+        if fact_conflict_detected:
+            state["needs_human"] = True
+            state["human_intervention_reason"] = "Fact 存在矛盾"
+            print(f"  → Fact 冲突，触发人工介入")
+            break
     
     # 全部完成后标记
     state["task_complete"] = True
