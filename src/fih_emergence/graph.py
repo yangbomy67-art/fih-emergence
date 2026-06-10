@@ -181,6 +181,21 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             # EI 持续低，尝试多样化
             valley_operation = "diversify_intent"
     
+    # === 涌现成功检测 ===
+    # 连续 2 轮 EI >= 15 → 任务完成
+    emergence_detected = False
+    emergence_operation = "none"
+    
+    if ei_score >= 15 and len(valley_signals) >= 2:
+        # 检查前一轮是否也 >= 15
+        prev_ei = valley_signals[-2].get("ei_score", 0) if len(valley_signals) >= 2 else 0
+        if prev_ei >= 15:
+            emergence_detected = True
+            emergence_operation = "emergence_success"
+    
+    state["emergence_detected"] = emergence_detected
+    state["emergence_operation"] = emergence_operation
+    
     state["valley_detected"] = valley_detected
     state["valley_type"] = valley_type
     state["valley_operation"] = valley_operation
@@ -255,6 +270,15 @@ async def run_session(
             state["needs_human"] = True
             state["human_intervention_reason"] = f"低谷穿越失败 (valley_type={state.get('valley_type')})"
             print(f"  → 低谷穿越失败，触发人工介入: {state['human_intervention_reason']}")
+            break
+        
+        # 终止条件 3: 涌现成功（连续 2 轮 EI >= 15）
+        emergence_detected = state.get("emergence_detected", False)
+        emergence_operation = state.get("emergence_operation", "none")
+        if emergence_detected and emergence_operation == "emergence_success":
+            print(f"  → 涌现成功！连续 2 轮 EI >= 15，任务完成")
+            state["task_complete"] = True
+            state["task_boundary_status"] = "closed"
             break
         
         # 低谷穿越尝试：产出停滞后首次触发，继续下一轮
