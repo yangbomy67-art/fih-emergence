@@ -53,6 +53,31 @@ class Proposer:
     def _parse_intents(self, content: str) -> list[dict]:
         """解析 LLM 响应为 Intent 列表"""
         intents = []
+        
+        # 尝试解析 JSON 格式
+        try:
+            # 提取 JSON 部分
+            if '```json' in content:
+                content = content.split('```json')[1].split('```')[0]
+            elif '```' in content:
+                content = content.split('```')[1].split('```')[0]
+            
+            import json
+            parsed = json.loads(content.strip())
+            
+            if isinstance(parsed, list):
+                for item in parsed:
+                    intents.append({
+                        "id": item.get("id", f"I{len(intents)+1}"),
+                        "content": item.get("content", ""),
+                        "type": item.get("type", "待探索"),
+                        "source": "proposer",
+                    })
+                return intents
+        except:
+            pass
+        
+        # 回退：简单解析每行
         lines = content.strip().split("\n")
         
         current_intent = None

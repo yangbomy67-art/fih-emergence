@@ -1,60 +1,33 @@
-"""生成 Markdown 结果报告"""
+"""生成 Markdown 结果报告（支持多轮数据）"""
 import asyncio
 import json
 from datetime import datetime
-from fih_emergence.database import get_session
 
 
-async def generate_report(session_id: str) -> str:
-    """生成 Markdown 报告"""
-    session = await get_session(session_id)
-    if not session:
-        return "# Session not found"
+def generate_report_from_history(
+    session_id: str,
+    task_description: str,
+    rounds_history: list,
+    facts: list,
+    hints: list,
+    task_status: str = "completed",
+) -> str:
+    """基于轮次历史生成 Markdown 报告"""
     
-    # 解析数据
-    intents = json.loads(session.get('intents', '[]'))
-    worker_subs = json.loads(session.get('worker_submissions', '[]'))
-    facts = json.loads(session.get('facts', '[]'))
-    hints = json.loads(session.get('hints', '[]'))
+    current_round = rounds_history[-1]["round"] if rounds_history else session.get("current_round", 1)
     
-    # 解析 Intent
-    intent_content = "未生成"
-    if intents and intents[0].get('content'):
-        content = intents[0]['content']
-        try:
-            if '```json' in content:
-                content = content.split('```json')[1].split('```')[0]
-            parsed = json.loads(content.strip())
-            if parsed and isinstance(parsed, list) and len(parsed) > 0:
-                intent_content = parsed[0].get('content', '无')
-        except:
-            intent_content = content[:100]
+    # 计算 EI 统计
+    ei_scores = [r.get("ei_score", 0) for r in rounds_history if r.get("ei_score", 0) > 0]
+    ei_mean = sum(ei_scores) / len(ei_scores) if ei_scores else 0
     
-    # 解析 Worker 产出
-    workers = []
-    for w in worker_subs:
-        content = w.get('content', '')
-        try:
-            if '```json' in content:
-                content = content.split('```json')[1].split('```')[0]
-                parsed = json.loads(content.strip())
-                content = parsed.get('insight', content)
-        except:
-            pass
-        workers.append({
-            'id': w.get('worker_id'),
-            'content': content[:150],
-            'confidence': w.get('confidence')
-        })
-    
-    # 生成 Markdown
-    md = f"""# 任务报告：{session.get('task_description', 'Unknown')}
+    md = f"""# 任务报告：{task_description}
 
 ## 任务概览
-- **Session ID**: {session.get('session_id')}
-- **状态**: {session.get('task_status')}
-- **执行轮数**: {session.get('current_round', 0)}
-- **涌现检测**: {'是' if session.get('current_round', 0) >= 2 else '否'}
+- **Session ID**: {session_id}
+- **状态**: {task_status}
+- **执行轮数**: {current_round}
+- **EI 均值**: {ei_mean:.1f}
+- **涌现检测**: {'是' if current_round >= 2 else '否'}
 
 ---
 
@@ -77,38 +50,93 @@ async def generate_report(session_id: str) -> str:
     
     # Hints 表
     for i, h in enumerate(hints, 1):
-        md += f"| {i} | {h.get('content', '')[:40]} | {h.get('source', '')} | {h.get('valid', True)} |\n"
+        md += f"| {i} | {h.get('content', '')[:40]} | {h.get('source', '')} | {h.get('status', '有效')} |\n"
     
-    md += f"""
+    md += """
 ### Intents + Insights (轮次工作记录)
 | 轮次 | Intent | EI | 产出A | 产出B | 胜出 | 本轮EI |
 |------|--------|-----|-------|-------|------|--------|
-| 1 | {intent_content[:30]}... | - | {workers[0]['content'][:20]}... ({workers[0]['confidence']}%) | {workers[1]['content'][:20]}... ({workers[1]['confidence']}%) | - | - |
-
+"""
+    
+    # 遍历每轮数据
+    for r in rounds_history:
+        round_num = r.get("round", "-")
+        intents = r.get("intents", [])
+        workers = r.get("worker_submissions", [])
+        ei = r.get("ei_score", 0)
+        
+        # Intent 内容
+        intent_content = "无"
+        if intents and intents[0].get("content"):
+            intent_content = intents[0]["content"][:40]
+        
+        # Worker 产出
+        worker_a = "无"
+        worker_b = "无"
+        conf_a = "-"
+        conf_b = "-"
+        
+        if workers:
+            if len(workers) > 0:
+                w0 = workers[0]
+                worker_a = w0.get("content", "")[:30]
+                conf_a = f"{w0.get('confidence', 0):.0f}%"
+            if len(workers) > 1:
+                w1 = workers[1]
+                worker_b = w1.get("content", "")[:30]
+                conf_b = f"{w1.get('confidence', 0):.0f}%"
+        
+        md += f"| {round_num} | {intent_content}... | - | {worker_a}... ({conf_a}) | {worker_b}... ({conf_b}) | - | {ei:.1f} |\n"
+    
+    md += """
 ---
 
 ### 核心洞察
 
-基于"{session.get('task_description', '未知主题')}"这一命题，我们从两个核心发现出发：系统响应延迟问题可能由多个因素导致。
+基于对该命题的深入分析，我们从多个维度展开探索。"""
+    
+    # 动态生成核心洞察
+    if rounds_history:
+        first_intent = "无"
+        if rounds_history[0].get("intents"):
+            first_intent = rounds_history[0]["intents"][0].get("content", "无")[:30]
+        
+        md += f"""
+系统从"{first_intent}..."这一意图出发，通过正反两方的对抗性分析，逐步深化对该问题的理解。
 
-在"分析延迟原因"这一意图的引导下，系统从两个方向展开分析：{workers[0]['id']} 侧重于数据库层面的问题，认为数据库慢查询是主要诱因；{workers[1]['id']} 则从更广的视角，认为网络和第三方服务问题同样不可忽视。两个方向的碰撞形成张力，最终指��一个结论——需要更多监控数据来定位根因。
-
-随着分析深入，系统将关注点从"原因分析"转向"解决方案"。此时，两个方向的博弈进入新阶段——需要综合考虑数据库优化、网络架构和第三方服务 SLA。
-
+随着分析深入，系统积累了多轮次的 Intents 和 Insights，这些产出形成了对问题的系统性认知。
+"""
+    
+    # Part 2: 流程数据变化
+    md += """
 ---
 
 ## Part 2: 流程数据变化
 
 ### EI 趋势
 ```
-Round 1: - ████████░░
-Round 2: - ██████████
-```
+"""
+    
+    # EI 趋势图
+    for r in rounds_history:
+        round_num = r.get("round", 0)
+        ei = r.get("ei_score", 0)
+        bar_len = int(ei / 2) if ei > 0 else 0
+        bar = "█" * bar_len + "░" * (10 - bar_len)
+        md += f"Round {round_num}: {ei:.1f} █{bar}░\n"
+    
+    md += """```
 
 ### Fact/Hint 变化
 ```
-Round 1: Facts +{len(facts)}, Hints +{len(hints)}
-```
+"""
+    
+    # Fact/Hint 变化
+    fact_count = len(facts)
+    hint_count = len(hints)
+    md += f"累计: Facts +{fact_count}, Hints +{hint_count}\n"
+    
+    md += """```
 
 ### 人工介入记录
 | 轮次 | 操作 | 内容 |
@@ -120,9 +148,12 @@ Round 1: Facts +{len(facts)}, Hints +{len(hints)}
 ## Part 3: 审计质量说明
 
 ### EI 统计
-- 均值: N/A
-- 趋势: 暂无
-
+"""
+    
+    md += f"- 均值: {ei_mean:.1f}\n"
+    md += f"- 趋势: {'上升' if ei_scores and len(ei_scores) > 1 and ei_scores[-1] > ei_scores[0] else '稳定'}\n"
+    
+    md += """
 ### 质量评估
 - 收敛性: 中
 - 一致性: 高
@@ -130,11 +161,45 @@ Round 1: Facts +{len(facts)}, Hints +{len(hints)}
 
 ---
 
-*报告生成时间: {datetime.utcnow().isoformat()}Z*
 """
+    
+    md += f"*报告生成时间: {datetime.utcnow().isoformat()}Z*"
+    
     return md
 
 
-if __name__ == "__main__":
-    result = asyncio.run(generate_report('final-fix'))
-    print(result)
+async def generate_report(session_id: str, rounds_history: list = None) -> str:
+    """生成 Markdown 报告（兼容旧接口）"""
+    from fih_emergence.database import get_session
+    
+    session = await get_session(session_id)
+    if not session:
+        return "# Session not found"
+    
+    # 如果没有传入 rounds_history，从数据库读取旧数据
+    if rounds_history is None:
+        # 尝试从数据库读取
+        intents = json.loads(session.get('intents', '[]'))
+        worker_subs = json.loads(session.get('worker_submissions', '[]'))
+        facts = json.loads(session.get('facts', '[]'))
+        hints = json.loads(session.get('hints', '[]'))
+        
+        # 构造成轮次历史格式（如果有数据）
+        if intents or worker_subs:
+            rounds_history = [{
+                "round": session.get("current_round", 1),
+                "intents": intents,
+                "worker_submissions": worker_subs,
+                "ei_score": 0,
+                "facts": facts,
+                "hints": hints,
+            }]
+    
+    return generate_report_from_history(
+        session_id=session_id,
+        task_description=session.get("task_description", "Unknown"),
+        rounds_history=rounds_history,
+        facts=json.loads(session.get("facts", "[]")),
+        hints=json.loads(session.get("hints", "[]")),
+        task_status=session.get("task_status", "completed"),
+    )

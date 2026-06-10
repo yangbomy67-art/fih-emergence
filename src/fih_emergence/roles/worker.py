@@ -56,25 +56,44 @@ class Worker:
         response = await self.llm_client.complete(prompt)
         content = response.content
         
-        # 简单解析
-        lines = content.strip().split("\n")
-        insight_lines = []
-        confidence = 75.0
-        suggestions = []
-        
-        for line in lines:
-            line = line.strip()
-            if "置信度" in line or "confidence" in line.lower():
-                # 提取置信度
-                import re
-                match = re.search(r'\d+', line)
-                if match:
-                    confidence = float(match.group())
-            elif line:
-                insight_lines.append(line)
-        
-        insight = "\n".join(insight_lines) if insight_lines else content[:200]
-        
+        # 解析 JSON 格式
+        try:
+            # 提取 JSON 部分
+            if '```json' in content:
+                content = content.split('```json')[1].split('```')[0]
+            elif '```' in content:
+                content = content.split('```')[1].split('```')[0]
+            
+            import json
+            parsed = json.loads(content.strip())
+            
+            if isinstance(parsed, dict):
+                insight = parsed.get("insight", content[:200])
+                confidence = parsed.get("self_confidence", 75.0)
+                suggestions = parsed.get("next_intent_suggestions", [])
+            else:
+                insight = content[:200]
+                confidence = 75.0
+                suggestions = []
+        except:
+            # 回退：简单解析
+            lines = content.strip().split("\n")
+            insight_lines = []
+            confidence = 75.0
+            
+            for line in lines:
+                line = line.strip()
+                if "置信度" in line or "confidence" in line.lower():
+                    import re
+                    match = re.search(r'\d+', line)
+                    if match:
+                        confidence = float(match.group())
+                elif line:
+                    insight_lines.append(line)
+            
+            insight = "\n".join(insight_lines) if insight_lines else content[:200]
+            suggestions = []
+
         return {
             "prompt": prompt,
             "worker_id": self.worker_id,

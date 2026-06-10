@@ -337,6 +337,9 @@ async def run_session(
     )
     await update_session(session_id, task_status="running")
     
+    # 初始化轮次历史（用于 Markdown 报告）
+    rounds_history = []
+    
     for round_num in range(1, max_iterations + 1):
         # 设置当前轮次
         state["current_round"] = round_num
@@ -354,7 +357,17 @@ async def run_session(
         # 终止条件 1: 达到 max_rounds
         if round_num >= max_iterations:
             print(f"  → 达到最大轮数 {max_iterations}，终止")
-            # 保存本轮数据
+            
+            # 保存轮次数据到历史
+            rounds_history.append({
+                "round": round_num,
+                "intents": state.get("intents", []),
+                "worker_submissions": state.get("worker_submissions", []),
+                "ei_score": state.get("ei_score", 0) or 0,
+                "facts": state.get("facts", []),
+                "hints": state.get("hints", []),
+            })
+            
             await update_session(
                 session_id,
                 task_status="completed",
@@ -430,6 +443,16 @@ async def run_session(
             hints=json.dumps(state.get("hints", [])),
             intents=json.dumps(state.get("intents", [])),
         )
+        
+        # 保存轮次数据到历史（每轮结束后）
+        rounds_history.append({
+            "round": round_num,
+            "intents": state.get("intents", []),
+            "worker_submissions": state.get("worker_submissions", []),
+            "ei_score": state.get("ei_score", 0) or 0,
+            "facts": state.get("facts", []),
+            "hints": state.get("hints", []),
+        })
     
     # 全部完成后标记
     state["task_complete"] = True
@@ -445,4 +468,7 @@ async def run_session(
         hints=json.dumps(state.get("hints", [])),
         intents=json.dumps(state.get("intents", [])),
     )
+    
+    # 返回完整状态 + 轮次历史
+    state["rounds_history"] = rounds_history
     return state
