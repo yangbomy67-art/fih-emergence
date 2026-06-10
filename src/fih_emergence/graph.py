@@ -316,8 +316,15 @@ async def run_session(
 ) -> dict:
     """运行多轮会话（含终止条件和低谷穿越）"""
     # 初始化数据库
-    from fih_emergence.database import init_db, update_session
+    from fih_emergence.database import init_db, create_session, update_session
     await init_db()
+    
+    # 创建会话
+    await create_session(
+        session_id=session_id,
+        task_description=task_description,
+        max_iterations=max_iterations,
+    )
     
     # 创建初始状态并设置任务为 running
     state = create_initial_state(
