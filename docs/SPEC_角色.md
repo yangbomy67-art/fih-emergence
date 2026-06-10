@@ -108,11 +108,16 @@ Worker_P / Worker_N 各自内部:
 
 ### 人工操作类型
 
-- Fact+ / Fact- / Hint+
-- 修正 Intent（经 Proposer 重新发布）
-- 强制继续 / 强制完成
-- 低谷穿越
-- 回退
+| 操作 | 触发方式 | 触发条件 |
+|------|----------|----------|
+| **Fact+** | `POST /interrupt` + `fact_plus` | 用户显式确认或 Auditor 提取 + Manager 裁决 |
+| **Fact-** | `POST /interrupt` + `fact_minus` | 用户手动标记无效，或 Fact 冲突时人工介入 |
+| **Hint+** | `POST /interrupt` + `hint_plus` | Auditor 标注候选 + Manager 确认 |
+| **修正 Intent** | `POST /interrupt` + `corrected_intent` | Auditor 拒绝（EI 不通过）或人工介入 |
+| **强制继续** | `POST /interrupt` + `action=continue` | 跳过当前中断继续执行 |
+| **强制完成** | `POST /force-complete` | 直接标记任务完成 |
+| **低谷穿越** | `POST /interrupt` + `action=valley_traverse` | 连续 3 轮无 Fact+ 时人工注入新方向 |
+| **回退** | `POST /rollback/{round_num}` | 回退到第 N 轮（需快照存在） |
 
 ### 中断规则
 
