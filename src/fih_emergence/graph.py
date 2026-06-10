@@ -402,6 +402,23 @@ async def run_session(
             print(f"  → 涌现成功！连续 2 轮 EI >= 15，任务完成")
             state["task_complete"] = True
             state["task_boundary_status"] = "closed"
+            
+            # 保存轮次数据
+            valley_signals = state.get("valley_signals", [])
+            round_ei = 0
+            for sig in valley_signals:
+                if sig.get("round") == round_num:
+                    round_ei = sig.get("ei_score", 0)
+                    break
+            rounds_history.append({
+                "round": round_num,
+                "intents": state.get("intents", []),
+                "worker_submissions": state.get("worker_submissions", []),
+                "ei_score": round_ei,
+                "facts": state.get("facts", []),
+                "hints": state.get("hints", []),
+            })
+            
             await update_session(session_id, task_status="completed")
             break
         

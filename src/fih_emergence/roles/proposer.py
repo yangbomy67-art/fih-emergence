@@ -77,6 +77,40 @@ class Proposer:
         except:
             pass
         
+        # 回退：解析自然语言/Markdown 格式（如 kimi 返回）
+        import re
+        lines = content.strip().split("\n")
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 匹配 "Intent N:" 或 "### Intent N:" 后面的内容
+            match = re.search(r'(?:Intent|intent)\s*\d+[:：]?\s*(.+?)(?:\n|$)', line)
+            if match:
+                text = match.group(1).strip().strip('`').strip('*').strip('#').strip('-')
+                if text and len(text) > 5:
+                    intents.append({
+                        "id": f"I{len(intents)+1}",
+                        "content": text[:100],
+                        "type": "待探索",
+                        "source": "proposer",
+                    })
+                    continue
+            
+            # 匹配 "定义：" 后面的长文本
+            match = re.search(r'定义[：:]\s*(.{10,150})', line)
+            if match:
+                text = match.group(1).strip()
+                if text:
+                    intents.append({
+                        "id": f"I{len(intents)+1}",
+                        "content": text[:100],
+                        "type": "待探索",
+                        "source": "proposer",
+                    })
+        
         # 回退：简单解析每行
         lines = content.strip().split("\n")
         
