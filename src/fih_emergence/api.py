@@ -16,6 +16,7 @@ from fih_emergence.database import (
     create_session,
     init_db,
     update_session,
+    get_session,
 )
 from fih_emergence.graph import run_session, workflow
 
@@ -117,8 +118,22 @@ async def start_task(req: StartRequest):
 
 
 @app.get("/status")
-async def get_status():
+async def get_status(session_id: str = None):
     """查看状态"""
+    if session_id:
+        # 读取真实会话状态
+        session = await get_session(session_id)
+        if session:
+            return {
+                "session_id": session["session_id"],
+                "topic": session["task_description"],
+                "current_round": session.get("current_round", 1),
+                "max_rounds": session["max_iterations"],
+                "status": session["status"],
+                "created_at": session["created_at"],
+            }
+        return {"error": "Session not found"}, 404
+    
     # TODO: 从数据库读取真实状态
     return {
         "status": "running",

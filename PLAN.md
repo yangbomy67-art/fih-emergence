@@ -18,8 +18,8 @@
 | P0.4 | 单元测试 | 60 tests passed | ✅ |
 | P0.5 | LLM 集成 | 4 角色 API 测试通过 | ✅ |
 | P0.6 | 工作流执行 | LangGraph 线性流程跑通 | ✅ |
-| **P0.7** | **节点 LLM 调用** | **Proposer/Worker/Auditor 调用真实 LLM** | 🔄 进行中 |
-| P0.8 | 端到端测试 | POST /start → 完整工作流执行 | ⏳ |
+| **P0.7** | **节点 LLM 调用** | **Proposer/Worker/Auditor 调用真实 LLM** | ✅ 完成 |
+| P0.8 | 端到端测试 | POST /start → 完整工作流执行 | ✅ |
 
 ---
 
