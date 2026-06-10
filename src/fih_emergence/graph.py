@@ -114,11 +114,24 @@ async def node_worker_n(state: FIHState) -> FIHState:
 
 
 async def node_auditor_post(state: FIHState) -> FIHState:
-    """Auditor: 事后审计 + 低谷检测"""
+    """Auditor: 事后审计 + 低谷检测 + 置信度异常检测"""
     auditor = get_auditor()
     submissions = state.get("worker_submissions", [])
     
+    # 收集双方的置信度
+    pro_confidence = 0.0
+    con_confidence = 0.0
+    
     if submissions:
+        for sub in submissions:
+            worker_id = sub.get("worker_id", "")
+            conf = sub.get("self_confidence", 0.0)
+            if worker_id == "worker_p":
+                pro_confidence = conf
+            elif worker_id == "worker_n":
+                con_confidence = conf
+        
+        # 审计第一个 submission
         sub = submissions[0]
         result = await auditor.post_audit_insight(
             worker_id=sub.get("worker_id", "unknown"),
@@ -126,6 +139,22 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             facts=state.get("facts", []),
         )
         state["audit_result"] = result
+    else:
+        result = {}
+    
+    # === 置信度异常检测（弱势方重产）===
+    need_rebuttal = False
+    rebuttal_type = ""
+    
+    if pro_confidence > 0 or con_confidence > 0:
+        need_rebuttal, rebuttal_type = auditor.check_confidence_anomaly(
+            pro_confidence, con_confidence
+        )
+    
+    state["pro_confidence"] = pro_confidence
+    state["con_confidence"] = con_confidence
+    state["need_rebuttal"] = need_rebuttal
+    state["rebuttal_type"] = rebuttal_type
     
     # === 低谷检测 ===
     current_round = state.get("current_round", 1)
@@ -289,6 +318,15 @@ async def run_session(
         # 低谷穿越：EI 持续低，尝试多���化（继续下一轮）
         if valley_detected and valley_operation == "diversify_intent":
             print(f"  → 检测到 EI 持续低，尝试低谷穿越（继续）")
+        
+        # === 弱势方重产处理 ===
+        need_rebuttal = state.get("need_rebuttal", False)
+        rebuttal_type = state.get("rebuttal_type", "")
+        if need_rebuttal:
+            print(f"  → 置信度异常检测: {rebuttal_type}，弱势方重产")
+            # TODO: 调用弱势方的 rebuttal() 重产
+            # 当前简化处理：记录状态，下轮继续
+            state["rebuttal_triggered"] = True
     
     # 全部完成后标记
     state["task_complete"] = True
