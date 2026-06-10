@@ -57,7 +57,8 @@ async def init_db(db_path: str = None) -> None:
                 intents TEXT DEFAULT '[]',
                 final_output TEXT,
                 error_message TEXT,
-                human_intervention_reason TEXT
+                human_intervention_reason TEXT,
+                worker_submissions TEXT DEFAULT '[]'
             )
         """)
 

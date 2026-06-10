@@ -6,6 +6,7 @@ LangGraph Workflow - 工作流编排（多轮版）
 """
 
 import asyncio
+import json
 from typing import List
 from langgraph.graph import END, StateGraph
 
@@ -88,8 +89,9 @@ async def node_worker_p(state: FIHState) -> FIHState:
     submissions = state.get("worker_submissions", [])
     submissions.append({
         "worker_id": "worker_p",
+        "content": result.get("insight", ""),  # 兼容：同时保存 content 字段
         "insight": result.get("insight", ""),
-        "self_confidence": result.get("self_confidence", 75.0),
+        "confidence": result.get("self_confidence", 75.0),
     })
     state["worker_submissions"] = submissions
     return state
@@ -106,8 +108,9 @@ async def node_worker_n(state: FIHState) -> FIHState:
     submissions = state.get("worker_submissions", [])
     submissions.append({
         "worker_id": "worker_n",
+        "content": result.get("insight", ""),  # 兼容：同时保存 content 字段
         "insight": result.get("insight", ""),
-        "self_confidence": result.get("self_confidence", 70.0),
+        "confidence": result.get("self_confidence", 70.0),
     })
     state["worker_submissions"] = submissions
     return state
@@ -351,7 +354,16 @@ async def run_session(
         # 终止条件 1: 达到 max_rounds
         if round_num >= max_iterations:
             print(f"  → 达到最大轮数 {max_iterations}，终止")
-            await update_session(session_id, task_status="completed")
+            # 保存本轮数据
+            await update_session(
+                session_id,
+                task_status="completed",
+                current_round=round_num,
+                facts=json.dumps(state.get("facts", [])),
+                hints=json.dumps(state.get("hints", [])),
+                intents=json.dumps(state.get("intents", [])),
+                worker_submissions=json.dumps(state.get("worker_submissions", [])),
+            )
             break
         
         # 终止条件 2: 低谷穿越失败后，触发人工介入
@@ -410,7 +422,6 @@ async def run_session(
         
         # === 保存到数据库 ===
         from fih_emergence.database import update_session
-        import json
         await update_session(
             session_id,
             current_round=round_num,
@@ -426,7 +437,6 @@ async def run_session(
     
     # 保存最终状态
     from fih_emergence.database import update_session
-    import json
     await update_session(
         session_id,
         current_round=state.get("current_round", 1),

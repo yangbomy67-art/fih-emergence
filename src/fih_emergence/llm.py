@@ -214,41 +214,64 @@ def create_llm_client(
 
 
 # 预配置的客户端（用于不同角色）
+def _load_config():
+    """从 config.yaml 加载配置"""
+    import yaml
+    from pathlib import Path
+    config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    if config_path.exists():
+        with open(config_path) as f:
+            return yaml.safe_load(f).get('models', {})
+    return {}
+
+_CONFIG = None
+
+def _get_model_config(role: str) -> dict:
+    """获取指定角色的模型配置"""
+    global _CONFIG
+    if _CONFIG is None:
+        _CONFIG = _load_config()
+    return _CONFIG.get(role, {})
+
 def get_manager_client() -> BaseLLMClient:
     """Manager 角色使用的 LLM 客户端"""
+    cfg = _get_model_config('manager')
     return create_llm_client(
-        provider=os.getenv("MANAGER_PROVIDER", "custom"),
+        provider=cfg.get('provider', 'custom'),
         api_key=os.getenv("LLM_API_KEY", ""),
-        base_url=os.getenv("LLM_API_URL", ""),
-        model=os.getenv("MANAGER_MODEL", "MiniMax-M2.5"),
+        base_url=cfg.get('api_url') or os.getenv("LLM_API_URL", ""),
+        model=cfg.get('model', "glm-5.1"),
     )
 
 
 def get_proposer_client() -> BaseLLMClient:
     """Proposer 角色使用的 LLM 客户端"""
+    cfg = _get_model_config('proposer')
     return create_llm_client(
-        provider=os.getenv("PROPOSER_PROVIDER", "custom"),
+        provider=cfg.get('provider', 'custom'),
         api_key=os.getenv("LLM_API_KEY", ""),
-        base_url=os.getenv("LLM_API_URL", ""),
-        model=os.getenv("PROPOSER_MODEL", "kimi-k2.6"),
+        base_url=cfg.get('api_url') or os.getenv("LLM_API_URL", ""),
+        model=cfg.get('model', "glm-5.1"),
     )
 
 
 def get_worker_client(worker_id: str = None) -> BaseLLMClient:
     """Worker 角色使用的 LLM 客户端"""
+    cfg = _get_model_config('worker')
     return create_llm_client(
-        provider=os.getenv("WORKER_PROVIDER", "custom"),
+        provider=cfg.get('provider', 'custom'),
         api_key=os.getenv("LLM_API_KEY", ""),
-        base_url=os.getenv("LLM_API_URL", ""),
-        model=os.getenv("WORKER_MODEL", "glm-5.1"),
+        base_url=cfg.get('api_url') or os.getenv("LLM_API_URL", ""),
+        model=cfg.get('model', "glm-5.1"),
     )
 
 
 def get_auditor_client() -> BaseLLMClient:
     """Auditor 角色使用的 LLM 客户端"""
+    cfg = _get_model_config('auditor')
     return create_llm_client(
-        provider=os.getenv("AUDITOR_PROVIDER", "custom"),
+        provider=cfg.get('provider', 'custom'),
         api_key=os.getenv("LLM_API_KEY", ""),
-        base_url=os.getenv("LLM_API_URL", ""),
-        model=os.getenv("AUDITOR_MODEL", "Qwen3.5-397B-A17B"),
+        base_url=cfg.get('api_url') or os.getenv("LLM_API_URL", ""),
+        model=cfg.get('model', "glm-5.1"),
     )
