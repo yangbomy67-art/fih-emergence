@@ -168,6 +168,7 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     
     # 检查 EI 分数
     ei_score = result.get("result_ei", 0) if submissions else 0
+    state["ei_score"] = ei_score  # 保存到 state
     
     # 更新低谷信号
     valley_signals = state.get("valley_signals", [])

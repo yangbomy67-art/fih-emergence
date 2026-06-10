@@ -79,11 +79,29 @@ def generate_report_from_history(
         if workers:
             if len(workers) > 0:
                 w0 = workers[0]
-                worker_a = w0.get("content", "")[:30]
+                content0 = w0.get("content", "")
+                # 解析 JSON
+                try:
+                    if '```json' in content0:
+                        content0 = content0.split('```json')[1].split('```')[0]
+                        parsed = json.loads(content0.strip())
+                        content0 = parsed.get('insight', content0)
+                except:
+                    pass
+                worker_a = content0[:30]
                 conf_a = f"{w0.get('confidence', 0):.0f}%"
             if len(workers) > 1:
                 w1 = workers[1]
-                worker_b = w1.get("content", "")[:30]
+                content1 = w1.get("content", "")
+                # 解析 JSON
+                try:
+                    if '```json' in content1:
+                        content1 = content1.split('```json')[1].split('```')[0]
+                        parsed = json.loads(content1.strip())
+                        content1 = parsed.get('insight', content1)
+                except:
+                    pass
+                worker_b = content1[:30]
                 conf_b = f"{w1.get('confidence', 0):.0f}%"
         
         md += f"| {round_num} | {intent_content}... | - | {worker_a}... ({conf_a}) | {worker_b}... ({conf_b}) | - | {ei:.1f} |\n"
