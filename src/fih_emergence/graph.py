@@ -1,11 +1,12 @@
 """
-LangGraph Workflow - 工作流编排（LLM版）
+LangGraph Workflow - 工作流编排（多轮版）
 
 基于 SPEC_流程.md §完整流程（九步）
-Flow: Manager → Proposer → Auditor → Workers (P/N) → Auditor → END
+支持多轮循环
 """
 
 import asyncio
+from typing import List
 from langgraph.graph import END, StateGraph
 
 from fih_emergence.state import FIHState, create_initial_state
@@ -59,15 +60,12 @@ def get_worker_n() -> Worker:
 
 
 def node_manager_start(state: FIHState) -> FIHState:
-    """Manager: 发布主题（Round 1）"""
-    state["current_round"] = 1
-    task = state.get("task_description", "")
-    # 可调用 Manager 发布主题
+    """Manager: 发布主题"""
     return state
 
 
 async def node_proposer_generate(state: FIHState) -> FIHState:
-    """Proposer: 多草稿生成"""
+    """Proposer: 生成 Intent"""
     proposer = get_proposer()
     result = await proposer.generate_intents(state)
     state["intents"] = result.get("intents", [])
@@ -76,7 +74,6 @@ async def node_proposer_generate(state: FIHState) -> FIHState:
 
 async def node_auditor_pre(state: FIHState) -> FIHState:
     """Auditor: 事前审计"""
-    # 简化：不做过滤，直接通过
     return state
 
 
@@ -84,19 +81,15 @@ async def node_worker_p(state: FIHState) -> FIHState:
     """Worker_P: 产出 Insight"""
     worker = get_worker_p()
     intents = state.get("intents", [])
-    intent = intents[0] if intents else {"id": "I1", "content": "默认 Intent"}
+    intent = intents[0] if intents else {"id": "I1", "content": "默认"}
     
-    result = await worker.generate_insight(
-        state=state,
-        intent=intent,
-    )
+    result = await worker.generate_insight(state=state, intent=intent)
     
     submissions = state.get("worker_submissions", [])
     submissions.append({
         "worker_id": "worker_p",
         "insight": result.get("insight", ""),
         "self_confidence": result.get("self_confidence", 75.0),
-        "next_intent_suggestions": result.get("next_intent_suggestions", []),
     })
     state["worker_submissions"] = submissions
     return state
@@ -106,19 +99,15 @@ async def node_worker_n(state: FIHState) -> FIHState:
     """Worker_N: 产出 Insight"""
     worker = get_worker_n()
     intents = state.get("intents", [])
-    intent = intents[0] if intents else {"id": "I1", "content": "默认 Intent"}
+    intent = intents[0] if intents else {"id": "I1", "content": "默认"}
     
-    result = await worker.generate_insight(
-        state=state,
-        intent=intent,
-    )
+    result = await worker.generate_insight(state=state, intent=intent)
     
     submissions = state.get("worker_submissions", [])
     submissions.append({
         "worker_id": "worker_n",
         "insight": result.get("insight", ""),
         "self_confidence": result.get("self_confidence", 70.0),
-        "next_intent_suggestions": result.get("next_intent_suggestions", []),
     })
     state["worker_submissions"] = submissions
     return state
@@ -129,7 +118,6 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     auditor = get_auditor()
     submissions = state.get("worker_submissions", [])
     
-    # 简化：只审计第一个 submission
     if submissions:
         sub = submissions[0]
         result = await auditor.post_audit_insight(
@@ -139,16 +127,14 @@ async def node_auditor_post(state: FIHState) -> FIHState:
         )
         state["audit_result"] = result
     
-    # 检查是否完成（简化：总是完成）
     state["task_complete"] = True
     return state
 
 
 def create_graph() -> StateGraph:
-    """创建 LangGraph 工作流（线性）"""
+    """创建工作流（简化版：不支持循环，用配置控制）"""
     graph = StateGraph(FIHState)
 
-    # 添加节点
     graph.add_node("manager", node_manager_start)
     graph.add_node("proposer", node_proposer_generate)
     graph.add_node("auditor_pre", node_auditor_pre)
@@ -156,10 +142,7 @@ def create_graph() -> StateGraph:
     graph.add_node("worker_n", node_worker_n)
     graph.add_node("auditor_post", node_auditor_post)
 
-    # 设置入口
     graph.set_entry_point("manager")
-
-    # 线性流程
     graph.add_edge("manager", "proposer")
     graph.add_edge("proposer", "auditor_pre")
     graph.add_edge("auditor_pre", "worker_p")
@@ -171,7 +154,6 @@ def create_graph() -> StateGraph:
 
 
 def compile_graph():
-    """编译工作流"""
     return create_graph().compile()
 
 
@@ -185,12 +167,22 @@ async def run_session(
     initial_hints: list[str] = None,
     max_iterations: int = 20,
 ) -> dict:
-    """运行完整会话"""
-    initial_state = create_initial_state(
+    """运行多轮会话（手动循环）"""
+    state = create_initial_state(
         session_id=session_id,
         task_description=task_description,
         max_iterations=max_iterations,
     )
     
-    final_state = await workflow.ainvoke(initial_state)
-    return final_state
+    for round_num in range(1, max_iterations + 1):
+        state["current_round"] = round_num
+        state["worker_submissions"] = []  # 每轮清空
+        
+        # 执行一轮
+        state = await workflow.ainvoke(state)
+        
+        # 检查是否完成
+        if state.get("task_complete", False):
+            break
+    
+    return state
