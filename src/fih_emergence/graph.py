@@ -315,11 +315,17 @@ async def run_session(
     max_iterations: int = 20,
 ) -> dict:
     """运行多轮会话（含终止条件和低谷穿越）"""
+    # 初始化数据库
+    from fih_emergence.database import init_db, update_session
+    await init_db()
+    
+    # 创建初始状态并设置任务为 running
     state = create_initial_state(
         session_id=session_id,
         task_description=task_description,
         max_iterations=max_iterations,
     )
+    await update_session(session_id, task_status="running")
     
     for round_num in range(1, max_iterations + 1):
         # 设置当前轮次
@@ -338,6 +344,7 @@ async def run_session(
         # 终止条件 1: 达到 max_rounds
         if round_num >= max_iterations:
             print(f"  → 达到最大轮数 {max_iterations}，终止")
+            await update_session(session_id, task_status="completed")
             break
         
         # 终止条件 2: 低谷穿越失败后，触发人工介入
@@ -345,6 +352,7 @@ async def run_session(
             state["needs_human"] = True
             state["human_intervention_reason"] = f"低谷穿越失败 (valley_type={state.get('valley_type')})"
             print(f"  → 低谷穿越失败，触发人工介入: {state['human_intervention_reason']}")
+            await update_session(session_id, task_status="paused", human_intervention_reason=state["human_intervention_reason"])
             break
         
         # 终止条件 3: 涌现成功（连续 2 轮 EI >= 15）
@@ -354,6 +362,7 @@ async def run_session(
             print(f"  → 涌现成功！连续 2 轮 EI >= 15，任务完成")
             state["task_complete"] = True
             state["task_boundary_status"] = "closed"
+            await update_session(session_id, task_status="completed")
             break
         
         # 低谷穿越尝试：产出停滞后首次触发，继续下一轮
@@ -379,6 +388,7 @@ async def run_session(
             state["needs_human"] = True
             state["human_intervention_reason"] = "连续 2 轮产出相同"
             print(f"  → 产出重复，触发人工介入")
+            await update_session(session_id, task_status="paused", human_intervention_reason="连续 2 轮产出相同")
             break
         
         # === Fact 冲突检测 ===
@@ -387,9 +397,35 @@ async def run_session(
             state["needs_human"] = True
             state["human_intervention_reason"] = "Fact 存在矛盾"
             print(f"  → Fact 冲突，触发人工介入")
+            # 设置为 paused 状态，等待人工介入
+            await update_session(session_id, task_status="paused", human_intervention_reason="Fact 存在矛盾")
             break
+        
+        # === 保存到数据库 ===
+        from fih_emergence.database import update_session
+        import json
+        await update_session(
+            session_id,
+            current_round=round_num,
+            task_status="running",
+            facts=json.dumps(state.get("facts", [])),
+            hints=json.dumps(state.get("hints", [])),
+            intents=json.dumps(state.get("intents", [])),
+        )
     
     # 全部完成后标记
     state["task_complete"] = True
     state["task_boundary_status"] = "closed"
+    
+    # 保存最终状态
+    from fih_emergence.database import update_session
+    import json
+    await update_session(
+        session_id,
+        current_round=state.get("current_round", 1),
+        task_status="completed",
+        facts=json.dumps(state.get("facts", [])),
+        hints=json.dumps(state.get("hints", [])),
+        intents=json.dumps(state.get("intents", [])),
+    )
     return state

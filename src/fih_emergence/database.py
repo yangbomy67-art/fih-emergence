@@ -51,8 +51,12 @@ async def init_db(db_path: str = None) -> None:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 current_round INTEGER DEFAULT 0,
-                status TEXT DEFAULT 'active',
-                final_output TEXT
+                task_status TEXT DEFAULT 'pending',
+                facts TEXT DEFAULT '[]',
+                hints TEXT DEFAULT '[]',
+                intents TEXT DEFAULT '[]',
+                final_output TEXT,
+                error_message TEXT
             )
         """)
 
@@ -134,8 +138,8 @@ async def create_session(
     async with aiosqlite.connect(get_db_path()) as db:
         await db.execute(
             """INSERT INTO session_meta
-               (session_id, task_description, max_iterations, mode, created_at, updated_at, current_round, status)
-               VALUES (?, ?, ?, 'FULL', ?, ?, 0, 'active')""",
+               (session_id, task_description, max_iterations, mode, created_at, updated_at, current_round, task_status, facts, hints, intents)
+               VALUES (?, ?, ?, 'FULL', ?, ?, 0, 'pending', '[]', '[]', '[]')""",
             (session_id, task_description, max_iterations, now, now),
         )
         await db.commit()

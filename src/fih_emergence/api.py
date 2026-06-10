@@ -196,7 +196,7 @@ async def get_status(session_id: str = None):
                 "topic": session["task_description"],
                 "current_round": session.get("current_round", 1),
                 "max_rounds": session["max_iterations"],
-                "status": session["status"],
+                "task_status": session.get("task_status", "pending"),
                 "created_at": session["created_at"],
             }
         return {"error": "Session not found"}, 404
@@ -229,12 +229,29 @@ async def interrupt(req: InterruptRequest):
 )
 async def stop_task(session_id: str = None):
     """强制终止任务"""
-    # TODO: 实际实现需要存储运行中的任务状态
-    # 简化：返回成功状态
+    if not session_id:
+        return {"error": "session_id is required"}, 400
+    
+    # 更新任务状态为 interrupted
+    from fih_emergence.database import update_session, get_session
+    
+    session = await get_session(session_id)
+    if not session:
+        return {"error": "session not found"}, 404
+    
+    # 如果任务正在运行，标记为 interrupted
+    if session.get("task_status") == "running":
+        await update_session(session_id, task_status="interrupted")
+        return {
+            "status": "stopped",
+            "session_id": session_id,
+            "message": "任务已强制终止"
+        }
+    
     return {
-        "status": "stopped",
+        "status": session.get("task_status", "unknown"),
         "session_id": session_id,
-        "message": "任务已强制终止"
+        "message": "任务不在运行状态"
     }
 
 
