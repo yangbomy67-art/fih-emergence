@@ -68,8 +68,6 @@ class Worker:
                 return {
                     "insight": insight,
                     "self_confidence": confidence,
-                    "action": "generate_insight",
-                    "citations": suggestions,
                 }
         except:
             pass
@@ -86,12 +84,9 @@ class Worker:
             if isinstance(parsed, dict):
                 insight = parsed.get("insight", content[:200])
                 confidence = parsed.get("self_confidence", 75.0)
-                suggestions = parsed.get("next_intent_suggestions", [])
                 return {
                     "insight": insight,
                     "self_confidence": confidence,
-                    "action": "generate_insight",
-                    "citations": suggestions,
                 }
         except:
             pass
@@ -100,8 +95,6 @@ class Worker:
         return {
             "insight": content[:500],
             "self_confidence": 50.0,
-            "action": "generate_insight",
-            "citations": [],
             "_raw_content": content,
             "_parse_status": "failed",
         }
