@@ -154,7 +154,9 @@ class CustomClient(BaseLLMClient):
                         )
 
                     data = await response.json()
-                    content = data["choices"][0]["message"]["content"]
+                    # 处理 content 为 null 的情况
+                    message = data["choices"][0]["message"]
+                    content = message.get("content") or message.get("reasoning", "") or "[Empty Response]"
                     usage = data.get("usage", {})
 
                     return LLMResponse(
