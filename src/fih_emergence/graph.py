@@ -502,6 +502,23 @@ async def run_session(
         intents=json.dumps(state.get("intents", [])),
     )
     
+    # === 自动生成 Markdown 报告 ===
+    try:
+        from fih_emergence.tools.generate_report import generate_report
+        task_desc = state.get("task_description", "未命名任务")
+        md = await generate_report(session_id, rounds_history=rounds_history)
+        
+        # 保存到 results 目录
+        import os
+        results_dir = os.path.join(os.path.dirname(__file__), "..", "..", "results")
+        os.makedirs(results_dir, exist_ok=True)
+        md_path = os.path.join(results_dir, f"{session_id}.md")
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md)
+        print(f"\n📄 Markdown 报告已生成: {md_path}")
+    except Exception as e:
+        print(f"\n⚠️ Markdown 报告生成失败: {e}")
+    
     # 返回完整状态 + 轮次历史
     state["rounds_history"] = rounds_history
     return state
