@@ -38,10 +38,51 @@ class Proposer:
             hints=hints_str,
         )
 
+        # 调用 LLM
+        response = await self.llm_client.complete(prompt)
+        content = response.content
+        
+        # 解析 LLM 响应为 Intent 列表
+        intents = self._parse_intents(content)
+        
         return {
             "prompt": prompt,
-            "intents": [],  # 由 LLM 填充
+            "intents": intents,
         }
+    
+    def _parse_intents(self, content: str) -> list[dict]:
+        """解析 LLM 响应为 Intent 列表"""
+        intents = []
+        lines = content.strip().split("\n")
+        
+        current_intent = None
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 简单解析：每行以 "-" 或数字开头视为一个 Intent
+            if line.startswith("-") or line[0].isdigit():
+                # 创建新 Intent
+                intent_id = f"I{len(intents) + 1}"
+                intent_content = line.lstrip("-0123456789. )")
+                intents.append({
+                    "id": intent_id,
+                    "content": intent_content,
+                    "type": "待探索",
+                    "source": "proposer",
+                })
+        
+        # 如果解析失败，生成一个默认 Intent
+        if not intents:
+            intents.append({
+                "id": "I1",
+                "content": content[:100] if len(content) > 100 else content,
+                "type": "待探索",
+                "source": "proposer",
+            })
+        
+        return intents
 
     async def supplement_intents(
         self,

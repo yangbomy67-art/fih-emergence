@@ -52,12 +52,35 @@ class Worker:
             hints=hints_str or "（无）",
         )
 
+        # 调用 LLM
+        response = await self.llm_client.complete(prompt)
+        content = response.content
+        
+        # 简单解析
+        lines = content.strip().split("\n")
+        insight_lines = []
+        confidence = 75.0
+        suggestions = []
+        
+        for line in lines:
+            line = line.strip()
+            if "置信度" in line or "confidence" in line.lower():
+                # 提取置信度
+                import re
+                match = re.search(r'\d+', line)
+                if match:
+                    confidence = float(match.group())
+            elif line:
+                insight_lines.append(line)
+        
+        insight = "\n".join(insight_lines) if insight_lines else content[:200]
+        
         return {
             "prompt": prompt,
             "worker_id": self.worker_id,
-            "insight": "",  # 由 LLM 填充
-            "self_confidence": 0.0,  # 由 LLM 评估
-            "next_intent_suggestions": [],
+            "insight": insight,
+            "self_confidence": confidence,
+            "next_intent_suggestions": suggestions,
         }
 
     async def rebuttal(
