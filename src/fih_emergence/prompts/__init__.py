@@ -88,13 +88,12 @@ Hints: {hints}
 3. 待决策：需要在候选项中择一，必须给出决策标准
 
 ## 输出格式
-```json
+直接输出 JSON 数组，不要有任何 markdown 标记。格式示例：
 [
-  {{"id": "I1", "content": "...", "type": "待验证", "supporting_facts": ["F1"]}},
-  {{"id": "I2", "content": "...", "type": "待探索", "supporting_facts": ["F1", "F2"]}},
-  ...
+  {"id": "I1", "content": "验证...", "type": "待验证"},
+  {"id": "I2", "content": "探索...", "type": "待探索"},
+  {"id": "I3", "content": "决策...", "type": "待决策"}
 ]
-```
 """
 
 PROPOSER_SUPPLEMENT = """Proposer 补充生成

@@ -54,15 +54,30 @@ class Proposer:
         """解析 LLM 响应为 Intent 列表"""
         intents = []
         
-        # 尝试解析 JSON 格式
+        # 策略 1: 先尝试整体 json.loads()（处理纯 JSON 返回）
+        import json
         try:
-            # 提取 JSON 部分
+            parsed = json.loads(content.strip())
+            if isinstance(parsed, list):
+                for item in parsed:
+                    intents.append({
+                        "id": item.get("id", f"I{len(intents)+1}"),
+                        "content": item.get("content", ""),
+                        "type": item.get("type", "待探索"),
+                        "source": "proposer",
+                    })
+                if intents:
+                    return intents
+        except:
+            pass
+        
+        # 策略 2: 尝试 ```json 提取
+        try:
             if '```json' in content:
                 content = content.split('```json')[1].split('```')[0]
             elif '```' in content:
                 content = content.split('```')[1].split('```')[0]
             
-            import json
             parsed = json.loads(content.strip())
             
             if isinstance(parsed, list):
@@ -76,6 +91,20 @@ class Proposer:
                 return intents
         except:
             pass
+        
+        # 策略 3: 解析失败，保存 raw_content
+        # 生成一个包含原始内容的 Intent，便于追溯
+        if content:
+            intents.append({
+                "id": "I1",
+                "content": content[:500],  # 保留原始内容前500字符
+                "type": "待探索",
+                "source": "proposer",
+                "_raw_content": content,  # 保留完整原始内容
+                "_parse_status": "failed",
+            })
+        
+        return intents
         
         # 回退：解析自然语言/Markdown 格式（如 kimi 返回）
         import re

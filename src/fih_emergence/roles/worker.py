@@ -57,42 +57,54 @@ class Worker:
         content = response.content
         
         # 解析 JSON 格式
+        # 策略 1: 先尝试整体 json.loads()
+        import json
         try:
-            # 提取 JSON 部分
+            parsed = json.loads(content.strip())
+            if isinstance(parsed, dict):
+                insight = parsed.get("insight", content[:200])
+                confidence = parsed.get("self_confidence", 75.0)
+                suggestions = parsed.get("next_intent_suggestions", [])
+                return {
+                    "insight": insight,
+                    "self_confidence": confidence,
+                    "action": "generate_insight",
+                    "citations": suggestions,
+                }
+        except:
+            pass
+        
+        # 策略 2: 尝试 ```json 提取
+        try:
             if '```json' in content:
                 content = content.split('```json')[1].split('```')[0]
             elif '```' in content:
                 content = content.split('```')[1].split('```')[0]
             
-            import json
             parsed = json.loads(content.strip())
             
             if isinstance(parsed, dict):
                 insight = parsed.get("insight", content[:200])
                 confidence = parsed.get("self_confidence", 75.0)
                 suggestions = parsed.get("next_intent_suggestions", [])
-            else:
-                insight = content[:200]
-                confidence = 75.0
-                suggestions = []
+                return {
+                    "insight": insight,
+                    "self_confidence": confidence,
+                    "action": "generate_insight",
+                    "citations": suggestions,
+                }
         except:
-            # 回退：简单解析
-            lines = content.strip().split("\n")
-            insight_lines = []
-            confidence = 75.0
-            
-            for line in lines:
-                line = line.strip()
-                if "置信度" in line or "confidence" in line.lower():
-                    import re
-                    match = re.search(r'\d+', line)
-                    if match:
-                        confidence = float(match.group())
-                elif line:
-                    insight_lines.append(line)
-            
-            insight = "\n".join(insight_lines) if insight_lines else content[:200]
-            suggestions = []
+            pass
+        
+        # 策略 3: 解析失败，保存 raw_content
+        return {
+            "insight": content[:500],
+            "self_confidence": 50.0,
+            "action": "generate_insight",
+            "citations": [],
+            "_raw_content": content,
+            "_parse_status": "failed",
+        }
 
         return {
             "prompt": prompt,
