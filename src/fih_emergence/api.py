@@ -119,13 +119,21 @@ class InterruptRequest(BaseModel):
 # Endpoints
 # =======================
 
-@app.get("/health")
+@app.get(
+    "/health",
+    summary="健康检查",
+    description="检查服务是否正常运行",
+)
 async def health():
     """健康检查"""
     return {"status": "healthy", "service": "fih-emergence"}
 
 
-@app.post("/start")
+@app.post(
+    "/start",
+    summary="开始新任务",
+    description="创建一个新的 FIH 任务会话，开始 Round 1",
+)
 async def start_task(req: StartRequest):
     """开始任务（Round 1）"""
     session_id = str(uuid.uuid4())
@@ -157,7 +165,11 @@ async def start_task(req: StartRequest):
     }
 
 
-@app.get("/status")
+@app.get(
+    "/status",
+    summary="查询任务状态",
+    description="根据 session_id 查询任务当前状态",
+)
 async def get_status(session_id: str = None):
     """查看状态"""
     if session_id:
@@ -182,7 +194,11 @@ async def get_status(session_id: str = None):
     }
 
 
-@app.post("/interrupt")
+@app.post(
+    "/interrupt",
+    summary="人工介入",
+    description="当任务触发3条件中断时，人工介入操作",
+)
 async def interrupt(req: InterruptRequest):
     """人工介入操作"""
     return {
@@ -191,7 +207,11 @@ async def interrupt(req: InterruptRequest):
     }
 
 
-@app.post("/stop")
+@app.post(
+    "/stop",
+    summary="强制终止任务",
+    description="用户主动终止正在运行的任务",
+)
 async def stop_task(session_id: str = None):
     """强制终止任务"""
     # TODO: 实际实现需要存储运行中的任务状态
@@ -203,13 +223,21 @@ async def stop_task(session_id: str = None):
     }
 
 
-@app.post("/force-complete")
+@app.post(
+    "/force-complete",
+    summary="强制完成任务",
+    description="跳过剩余轮次，直接标记任务完成",
+)
 async def force_complete():
     """强制完成"""
     return {"status": "completed"}
 
 
-@app.post("/rollback/{round_num}")
+@app.post(
+    "/rollback/{round_num}",
+    summary="回退到指定轮次",
+    description="恢复到指定轮次的快照状态，清除后续轮次数据",
+)
 async def rollback(session_id: str, round_num: int):
     """回退到第 N 轮"""
     # 1. 获取会话当前状态
@@ -302,7 +330,10 @@ manager = ConnectionManager()
 
 
 @app.websocket("/ws/events")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_events(websocket: WebSocket, session_id: str = None):
+    """WebSocket 事件流
+    实时接收任务事件推送（3条件中断/状态更新等）
+    """
     """WebSocket 长连接，接收 4 条件推送"""
     session_id = None
 
