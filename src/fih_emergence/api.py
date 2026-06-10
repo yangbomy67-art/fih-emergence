@@ -4,9 +4,11 @@ FastAPI Application - HTTP API
 Based on SPEC_API.md
 """
 
+import json
 import uuid
 from contextlib import asynccontextmanager
 
+import aiosqlite
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -14,9 +16,11 @@ from pydantic import BaseModel, Field
 from fih_emergence.config import get_config
 from fih_emergence.database import (
     create_session,
+    get_db_path,
+    get_session,
+    get_snapshot,
     init_db,
     update_session,
-    get_session,
 )
 from fih_emergence.graph import run_session, workflow
 
@@ -170,9 +174,69 @@ async def force_complete():
 
 
 @app.post("/rollback/{round_num}")
-async def rollback(round_num: int):
+async def rollback(session_id: str, round_num: int):
     """回退到第 N 轮"""
-    return {"status": "rolled_back", "round": round_num}
+    # 1. 获取会话当前状态
+    session = await get_session(session_id)
+    if not session:
+        return {"error": "会话不存在", "session_id": session_id}
+    
+    current_round = session.get("current_round", 0)
+    
+    # 2. 验证轮次有效性
+    if round_num <= 0:
+        return {"error": "无效轮次：必须大于 0"}
+    
+    if round_num >= current_round:
+        return {"error": f"无效轮次：目标轮次 {round_num} 必须小于当前轮次 {current_round}"}
+    
+    # 3. 检查快照是否存在
+    snapshot = await get_snapshot(session_id, round_num)
+    if not snapshot:
+        return {"error": "快照不存在", "available_rounds": list(range(1, current_round))}
+    
+    # 4. 执行回退：恢复快照状态
+    # 恢复 facts, hints, intents
+    facts = snapshot.get("facts", "[]")
+    hints = snapshot.get("hints", "[]")
+    intents = snapshot.get("intents", "[]")
+    
+    # 解析 JSON 字符串
+    import json
+    try:
+        facts_list = json.loads(facts) if isinstance(facts, str) else facts
+        hints_list = json.loads(hints) if isinstance(hints, str) else hints
+        intents_list = json.loads(intents) if isinstance(intents, str) else intents
+    except (json.JSONDecodeError, TypeError):
+        facts_list = []
+        hints_list = []
+        intents_list = []
+    
+    # 5. 更新会话状态
+    await update_session(
+        session_id,
+        current_round=round_num,
+        facts=json.dumps(facts_list),
+        hints=json.dumps(hints_list),
+        intents=json.dumps(intents_list),
+        status="running",
+    )
+    
+    # 6. 删除后续轮次的快照（清理）
+    async with aiosqlite.connect(get_db_path()) as db:
+        await db.execute(
+            "DELETE FROM blackboard_snapshots WHERE session_id = ? AND round > ?",
+            (session_id, round_num),
+        )
+        await db.commit()
+    
+    return {
+        "status": "rolled_back",
+        "session_id": session_id,
+        "from_round": current_round,
+        "to_round": round_num,
+        "message": f"已回退到第 {round_num} 轮"
+    }
 
 
 # =======================

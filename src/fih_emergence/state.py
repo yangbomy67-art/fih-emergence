@@ -111,7 +111,14 @@ class FIHState(TypedDict, total=False):
     valley_detected: bool
     valley_signals: list  # 滑动窗口保留最近5轮
     valley_operation: str | None
-
+    
+    # =======================
+    # 涌现检测
+    # =======================
+    emergence_detected: bool  # 是否检测到涌现
+    emergence_signals: list  # 滑动窗口保留最近5轮
+    emergence_operation: str | None  # none / emergence_success
+    
     # =======================
     # Fact 冲突检测
     # =======================
@@ -172,6 +179,9 @@ def create_initial_state(
         "valley_detected": False,
         "valley_signals": [],
         "valley_operation": None,
+        "emergence_detected": False,
+        "emergence_signals": [],
+        "emergence_operation": None,
         "fact_conflicts": [],
         "needs_human": False,
         "human_intervention_reason": "",
