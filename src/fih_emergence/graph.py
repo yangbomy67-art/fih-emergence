@@ -114,7 +114,7 @@ async def node_worker_n(state: FIHState) -> FIHState:
 
 
 async def node_auditor_post(state: FIHState) -> FIHState:
-    """Auditor: 事后审计"""
+    """Auditor: 事后审计 + 低谷检测"""
     auditor = get_auditor()
     submissions = state.get("worker_submissions", [])
     
@@ -127,12 +127,64 @@ async def node_auditor_post(state: FIHState) -> FIHState:
         )
         state["audit_result"] = result
     
-    state["task_complete"] = True
+    # === 低谷检测 ===
+    current_round = state.get("current_round", 1)
+    
+    # 检查本轮是否产生新 Fact+
+    new_facts_this_round = result.get("fact_candidates", []) if submissions else []
+    has_new_fact = len(new_facts_this_round) > 0
+    
+    # 检查 EI 分数
+    ei_score = result.get("result_ei", 0) if submissions else 0
+    
+    # 更新低谷信号
+    valley_signals = state.get("valley_signals", [])
+    valley_signals.append({
+        "round": current_round,
+        "has_new_fact": has_new_fact,
+        "ei_score": ei_score,
+    })
+    # 保留最近 5 轮
+    valley_signals = valley_signals[-5:]
+    state["valley_signals"] = valley_signals
+    
+    # 计算连续无新 Fact 轮次
+    no_fact_rounds = 0
+    for sig in reversed(valley_signals):
+        if not sig.get("has_new_fact", False):
+            no_fact_rounds += 1
+        else:
+            break
+    state["no_fact_rounds"] = no_fact_rounds
+    
+    # 低谷类型判断
+    valley_detected = False
+    valley_type = ""
+    valley_operation = "none"
+    
+    if no_fact_rounds >= 3:
+        valley_detected = True
+        valley_type = "no_fact"
+        # 连续 3 轮无新 Fact，触发强制人工介入
+        valley_operation = "force_human_intervention"
+    elif len(valley_signals) >= 3:
+        # 检查 EI 持续低下
+        recent_ei = [s.get("ei_score", 0) for s in valley_signals[-3:]]
+        if all(ei < 10 for ei in recent_ei):
+            valley_detected = True
+            valley_type = "ei_low"
+            # EI 持续低，尝试多样化
+            valley_operation = "diversify_intent"
+    
+    state["valley_detected"] = valley_detected
+    state["valley_type"] = valley_type
+    state["valley_operation"] = valley_operation
+    
     return state
 
 
 def create_graph() -> StateGraph:
-    """创建工作流（简化版：不支持循环，用配置控制）"""
+    """创建工作流（单轮）"""
     graph = StateGraph(FIHState)
 
     graph.add_node("manager", node_manager_start)
@@ -167,7 +219,7 @@ async def run_session(
     initial_hints: list[str] = None,
     max_iterations: int = 20,
 ) -> dict:
-    """运行多轮会话（手动循环）"""
+    """运行多轮会话（含终止条件和低谷穿越）"""
     state = create_initial_state(
         session_id=session_id,
         task_description=task_description,
@@ -175,14 +227,38 @@ async def run_session(
     )
     
     for round_num in range(1, max_iterations + 1):
+        # 设置当前轮次
         state["current_round"] = round_num
-        state["worker_submissions"] = []  # 每轮清空
+        state["worker_submissions"] = []
         
-        # 执行一轮
+        # 执行一轮工作流
         state = await workflow.ainvoke(state)
         
-        # 检查是否完成
-        if state.get("task_complete", False):
+        print(f"Round {round_num}: valley_detected={state.get('valley_detected')}, operation={state.get('valley_operation')}")
+        
+        # === 检查终止条件 ===
+        valley_detected = state.get("valley_detected", False)
+        valley_operation = state.get("valley_operation", "none")
+        
+        # 终止条��� 1: 达到 max_rounds
+        if round_num >= max_iterations:
+            print(f"  → 达到最大轮数 {max_iterations}，终止")
             break
+        
+        # 终止条件 2: 连续 3 轮同类低谷，强制人工介入
+        if valley_detected and valley_operation == "force_human_intervention":
+            state["needs_human"] = True
+            state["human_intervention_reason"] = f"连续 3 轮无新 Fact+ (valley_type={state.get('valley_type')})"
+            print(f"  → 低谷升级，触发人工介入: {state['human_intervention_reason']}")
+            # 暂停等待人工介入（简化版：直接终止）
+            break
+        
+        # 低谷穿越：EI 持续低，尝试多样化（继续下一轮）
+        if valley_detected and valley_operation == "diversify_intent":
+            print(f"  → 检测到 EI 持续低，尝试低谷穿越（继续）")
+            # 继续下一轮，让 Proposer 生成多样化 Intent
     
+    # 全部完成后标记
+    state["task_complete"] = True
+    state["task_boundary_status"] = "closed"
     return state
