@@ -140,7 +140,77 @@
 - 写入 `session_meta.status = "aborted"`
 - 通过 WebSocket 推送 `task_error` 事件给 Human Gate
 
+## 日志策略
+
+### 日志级别
+
+| 级别 | 使用场景 |
+|------|----------|
+| **DEBUG** | 调试信息：函数入口/出口、变量值 |
+| **INFO** | 正常流程：任务启动/完成、轮次切换 |
+| **WARNING** | 异常但可处理：重试、降级 |
+| **ERROR** | 错误：LLM 失败、DB 错误、需要人工介入 |
+| **CRITICAL** | 严重错误：任务中止、不可恢复 |
+
+### 日志内容格式（JSON 结构化）
+
+```json
+{
+  "timestamp": "2026-06-10T12:00:00Z",
+  "level": "INFO",
+  "logger": "fih.workflow",
+  "session_id": "abc123",
+  "round": 3,
+  "event": "round_started",
+  "message": "第 3 轮开始执行",
+  "data": {}
+}
+```
+
+### 日志持久化
+
+| ��目 | 规则 |
+|------|------|
+| **输出位置** | `logs/fih-YYYYMMDD.log` |
+| **文件轮转** | 每天一个新文件，保留 30 天 |
+| **格式** | JSON Lines（每行一个 JSON） |
+| **日志器** | fih.api / fih.workflow / fih.llm / fih.db / fih.audit |
+
+### 日志分类
+
+| 日志器 | 记录内容 |
+|--------|----------|
+| `fih.api` | HTTP 请求/响应、API 错误 |
+| `fih.workflow` | 工作流节点执行、状态变更 |
+| `fih.llm` | LLM 调用请求/响应、耗时、错误 |
+| `fih.db` | 数据库操作、事务提交/回滚 |
+| `fih.audit` | Auditor 审计结果、EI 计算、4 维评分 |
+
+### 监控指标
+
+| 类别 | 指标 | 说明 |
+|------|------|------|
+| **任务统计** | tasks_total | 总任务数 |
+| | tasks_completed | 成功完成任务数 |
+| | tasks_failed | 失败任务数 |
+| | tasks_aborted | 中止任务数 |
+| | avg_rounds | 平均执行轮数 |
+| **LLM 统计** | llm_calls_total | LLM 总调用次数 |
+| | llm_calls_success | 成功调用次数 |
+| | llm_calls_failed | 失败调用次数 |
+| | llm_avg_latency_ms | 平均响应时间 (ms) |
+| **业务统计** | emergence_count | 涌现成功次数 |
+| | valley_count | 低谷触发次数 |
+| | human_intervention_count | 人工介入次数 |
+| | rebuttal_count | 弱势方重产次数 |
+
+### 指标存储
+
+- **存储位置**：SQLite 表 `metrics` 或内存
+- **保留时间**：最近 10000 条记录
+- **访问 API**：`GET /metrics` 返回 JSON
+
 ---
 
 > 文档版本: v1.0
-> 最后更新: 2026-06-09
+> 最后更新: 2026-06-10
