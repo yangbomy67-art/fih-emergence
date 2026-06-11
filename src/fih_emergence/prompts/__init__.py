@@ -196,9 +196,12 @@ D. 可传递性：能否作为新任务起点？
 
 ## 输出要求
 直接输出 JSON，不要任何思考过程。格式示例：
-{"passed": true, "scores_4d": {"A": 8, "B": 7, "C": 6, "D": 9}, "result_ei": 30, "fact_candidates": [{"content": "当前黑板缺乏系统日志", "source": "insight"}], "hint_candidates": [{"content": "新线索", "source": "insight"}], "valley_detected": false}
+{"passed": true, "scores_4d": {"A": 8, "B": 7, "C": 6, "D": 9}, "result_ei": 30, "fact_candidates": [{"content": "当前黑板缺乏系统日志", "source": "insight"}], "hint_candidates": [{"content": "新线索", "source": "insight", "suggest_promote_to_fact": false}], "valley_detected": false}
 
-注意：必须提取至少1条 fact_candidates 和 1 条 hint_candidates！
+注意：
+1. 必须提取至少1条 fact_candidates 和 1 条 hint_candidates！
+2. 对于 hint_candidates，检查黑板现有 Hints 是否被当前 Insight 引用，如果是则标记 "suggest_promote_to_fact": true（表示建议升格为 Fact）
+3. 升格条件：Hint 被多次引用（跨轮次），且内容已被验证为有价值
 """
 
 AUDITOR_VALLEY_CHECK = """检测低谷：

@@ -196,14 +196,23 @@ class Auditor:
         return candidates
 
     def extract_hint_candidates(self, insight: str, hints: list[dict]) -> list[dict]:
-        """从黑板中匹配 Hint+ 候选"""
-        # 简化：基于关键词匹配
+        """从黑板中匹配 Hint+ 候选，并标记是否建议升格 Fact"""
         candidates = []
         for hint in hints:
-            if any(keyword in insight.lower() for keyword in hint["content"].lower().split()):
+            # 基于关键词匹配
+            keywords = hint.get("content", "").lower().split()
+            matched = any(keyword in insight.lower() for keyword in keywords if len(keyword) > 2)
+            
+            if matched:
+                # 检查是否已引用多次（跨轮次），建议升格
+                current_round = hint.get("round", 0)
+                is_repeated = hint.get("引用次数", 0) > 1
+                
                 candidates.append({
                     **hint,
                     "status": "candidate",
+                    "hint_matched": True,
+                    "suggest_promote_to_fact": is_repeated,  # 多次引用，建议升格
                 })
         return candidates
 

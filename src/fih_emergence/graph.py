@@ -170,19 +170,57 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             existing_hint_contents = {h.get("content", "") for h in existing_hints}
             
             new_hints = []
+            hints_to_promote = []  # 建议升格到 Fact 的 Hint
+            
             for hc in hint_cands:
                 content = hc.get("content", "")
+                suggest_promote = hc.get("suggest_promote_to_fact", False)
+                
                 if content and content not in existing_hint_contents:
-                    new_hints.append({
+                    hint_entry = {
                         "content": content,
                         "source": hc.get("source", "insight"),
                         "status": "candidate",
                         "round": state.get("current_round", 1),
-                    })
+                        "引用次数": 1,
+                    }
+                    new_hints.append(hint_entry)
+                    
+                    # 如果 LLM 建议升格，标记到待升格列表
+                    if suggest_promote:
+                        hints_to_promote.append(content)
             
             if new_hints:
                 state["hints"] = existing_hints + new_hints
                 print(f"[INFO] 新增 {len(new_hints)} 条 Hint 到黑板")
+            
+            # === Manager 评估：Hint 升格为 Fact ===
+            if hints_to_promote:
+                existing_facts = state.get("facts", [])
+                existing_fact_contents = {f.get("content", "") for f in existing_facts}
+                
+                promoted_count = 0
+                for hint_content in hints_to_promote:
+                    # 升格条件：Hint 内容尚未在 Fact 中
+                    if hint_content not in existing_fact_contents:
+                        # 查找黑板中的 Hint 条目，增加引用次数并升格
+                        for hint in new_hints:
+                            if hint["content"] == hint_content:
+                                hint["status"] = "promoted"  # 已升格
+                                # 升格为 Fact
+                                new_fact = {
+                                    "content": hint_content,
+                                    "source": "hint_promoted",
+                                    "round": state.get("current_round", 1),
+                                }
+                                state["facts"] = existing_facts + [new_fact]
+                                existing_facts = state["facts"]
+                                existing_fact_contents.add(hint_content)
+                                promoted_count += 1
+                                print(f"[INFO] Manager 评估通过：Hint 升格为 Fact: {hint_content[:40]}...")
+                
+                if promoted_count > 0:
+                    print(f"[INFO] 本轮共 {promoted_count} 条 Hint 升格为 Fact")
     else:
         result = {}
     
