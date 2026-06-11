@@ -366,7 +366,7 @@ async def websocket_events(websocket: WebSocket, session_id: str = None):
     """WebSocket 事件流
     实时接收任务事件推送（3条件中断/状态更新等）
     """
-    """WebSocket 长连接，接收 4 条件推送"""
+    """WebSocket 长连接，接收 3 条件推送"""
     session_id = None
 
     try:

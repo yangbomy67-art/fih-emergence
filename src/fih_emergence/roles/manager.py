@@ -68,7 +68,7 @@ class Manager:
 
     def check_interrupt_conditions(self, state: FIHState) -> tuple[bool, str]:
         """
-        检查 4 条件是否触发
+        检查 3 条件是否触发
 
         Returns:
             (是否触发, 原因)
@@ -144,12 +144,13 @@ class Manager:
         total = sum(scores.values())
         return (total / (4 * 10)) * 100
 
-    def detect_valley(self, state: FIHState) -> tuple[bool, str, str]:
+    def select_valley_strategy(self, state: FIHState) -> tuple[bool, str, str]:
         """
-        检测低谷
+        选择低谷穿越策略（低谷检测是程序自动，这里只做策略选择）
 
         Returns:
-            (是否检测到低谷, 低谷类型, 建议操作)
+            (是否需要执行策略, 策略类型, 策略建议)
+            策略类型: diversify_intent / force_fact_plus / none
         """
         # 检查连续无 Fact+ 轮次
         if state.get("no_fact_rounds", 0) >= 3:

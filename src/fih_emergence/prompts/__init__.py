@@ -33,12 +33,11 @@ Intents: {intents}
 请输出本轮的主题（包含要发布的 Intent）：
 """
 
-MANAGER_CHECK_INTERRUPT = """检测 4 条件是否触发：
+MANAGER_CHECK_INTERRUPT = """检测 3 条件是否触发：
 
-1. 置信度异常: 正方>80% 且 反方<30%，或 反方>80% 且 正方<30%
-2. 产出停滞: 连续 {no_fact_rounds} 轮无 Fact+
-3. 产出重复: 连续 {consecutive_same_output} 轮产出相同
-4. Fact 冲突: {fact_conflicts}
+1. 产出停滞: 连续 {no_fact_rounds} 轮无 Fact+
+2. 产出重复: 连续 {consecutive_same_output} 轮产出相同
+3. Fact 冲突: {fact_conflicts}
 
 当前轮次 Worker 产出:
 - Worker_P confidence: {worker_p_confidence}%

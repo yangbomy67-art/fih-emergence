@@ -325,12 +325,14 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     state["fact_conflict_detected"] = fact_conflict_detected
     
     # 低谷类型判断
+    # 3轮无Fact+ → 尝试穿越（valley_traverse）
+    # 4+轮无Fact+ → 强制人工介入（force_human_intervention）
     valley_detected = False
     valley_type = ""
     valley_operation = "none"
     
-    if no_fact_rounds >= 3:
-        # 连续 3+ 轮无 Fact+ → 低谷穿越失败，触发人工介入
+    if no_fact_rounds >= 4:
+        # 连续 4+ 轮无 Fact+ → 低谷穿越失败，触发人工介入
         valley_detected = True
         valley_type = "no_fact"
         valley_operation = "force_human_intervention"

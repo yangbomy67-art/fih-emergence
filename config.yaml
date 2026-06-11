@@ -62,7 +62,7 @@ models:
 ## EI 评估配置
 ei:
   # result_EI 通过阈值 (SPEC_EI.md)
-  result_ei_threshold: 15
+  result_ei_threshold: 30
   # 置信度聚合阈值
   confidence_aggregation_threshold: 85
   # 四维评分阈值

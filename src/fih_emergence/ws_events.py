@@ -1,7 +1,7 @@
 """
 WebSocket 事件管理器
 
-基于 SPEC 的 4 条件推送
+基于 SPEC 的 3 条件推送
 """
 
 from typing import Any
@@ -68,7 +68,7 @@ class WSEvent:
     TASK_COMPLETED = "task_completed"
     TASK_FAILED = "task_failed"
 
-    # 4 条件中断推送
+    # 3 条件中断推送
     EMERGENCE_SUCCESS = "emergence_success"  # 涌现成功 (连续2轮EI>=30)
     VALLEY_UNRESOLVED = "valley_unresolved"  # 低谷穿越失败 (4+轮无Fact+)
     DUPLICATE_OUTPUT = "duplicate_output"  # 产出重复 (连续2轮相同)

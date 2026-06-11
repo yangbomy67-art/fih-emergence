@@ -6,7 +6,7 @@ Based on SPEC_角色.md §Auditor
 Responsibilities:
 1. 事前审计 (Intent → Worker 门槛)：EI 启发式评估（门控）
 2. 事后审计 (Insight → 黑板 门槛)：EI 追踪 + Fact+候选 + Hint+候选 + 快照策略 + 四维审计 + 低谷识别
-3. 检测 4 条件并通知 Manager
+3. 检测 3 条件并通知 Manager
 """
 
 from fih_emergence.llm import BaseLLMClient, get_auditor_client
