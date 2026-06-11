@@ -7,7 +7,7 @@
 ## Phase
 
 ```
-phase: integration-inventory
+phase: convergence
 ```
 
 ---
