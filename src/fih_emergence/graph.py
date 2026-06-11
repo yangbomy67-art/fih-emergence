@@ -128,7 +128,7 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     if submissions:
         for sub in submissions:
             worker_id = sub.get("worker_id", "")
-            conf = sub.get("self_confidence", 0.0)
+            conf = sub.get("confidence", sub.get("self_confidence", 0.0))
             if worker_id == "worker_p":
                 pro_confidence = conf
             elif worker_id == "worker_n":
@@ -494,9 +494,53 @@ async def run_session(
         # === 弱势方重产处理 ===
         need_rebuttal = state.get("need_rebuttal", False)
         rebuttal_type = state.get("rebuttal_type", "")
+        
         if need_rebuttal:
             print(f"  → 置信度异常检测: {rebuttal_type}，弱势方重产")
             state["rebuttal_triggered"] = True
+            
+            # 获取两个 Worker 的产出
+            submissions = state.get("worker_submissions", [])
+            if len(submissions) >= 2:
+                worker_p_sub = next((s for s in submissions if s.get("worker_id") == "worker_p"), None)
+                worker_n_sub = next((s for s in submissions if s.get("worker_id") == "worker_n"), None)
+                
+                # 确定弱势方（p_dominant: P强N弱; n_dominant: N强P弱）
+                if "p_dominant" in rebuttal_type and worker_n_sub:
+                    # P强N弱，Worker N 弱势，重产
+                    weak_worker = get_worker_n()
+                    opponent_insight = worker_p_sub.get("insight", "") if worker_p_sub else ""
+                    weak_insight = worker_n_sub.get("insight", "")
+                    weak_confidence = worker_n_sub.get("confidence", 0)
+                    
+                    # 重新生成 insight
+                    new_insight_result = await weak_worker.generate_insight(
+                        state=state,
+                        intent=state.get("intents", [{}])[0],
+                    )
+                    
+                    # 更新弱势方产出
+                    worker_n_sub["insight"] = new_insight_result.get("insight", weak_insight)
+                    worker_n_sub["confidence"] = new_insight_result.get("self_confidence", weak_confidence)
+                    print(f"  → Worker N 重产完成(conf={worker_n_sub['confidence']})")
+                    
+                elif "n_dominant" in rebuttal_type and worker_p_sub:
+                    # N强P弱，Worker P 弱势，重产
+                    weak_worker = get_worker_p()
+                    opponent_insight = worker_n_sub.get("insight", "") if worker_n_sub else ""
+                    weak_insight = worker_p_sub.get("insight", "")
+                    weak_confidence = worker_p_sub.get("confidence", 0)
+                    
+                    # 重新生成 insight
+                    new_insight_result = await weak_worker.generate_insight(
+                        state=state,
+                        intent=state.get("intents", [{}])[0],
+                    )
+                    
+                    # 更新弱势方产出
+                    worker_p_sub["insight"] = new_insight_result.get("insight", weak_insight)
+                    worker_p_sub["confidence"] = new_insight_result.get("self_confidence", weak_confidence)
+                    print(f"  → Worker P 重产完成(conf={worker_p_sub['confidence']})")
         
         # === 产出重复检测 ===
         duplicate_detected = state.get("duplicate_detected", False)
