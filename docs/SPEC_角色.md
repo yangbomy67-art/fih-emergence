@@ -32,14 +32,23 @@ Manager 是系统唯一与 Human Gate 交互的角色。
 
 ### 职责
 
-- **多草稿生成**：基于当前 Facts + Hints，生成 N=2-4 个候选 Intent，确保三类 Intent 均有覆盖
+- **多草稿生成**：基于当前 Facts + Hints + 上一轮 Next Intent 建议，生成 N=2-4 个候选 Intent，确保三类 Intent 均有覆盖
 - **发布/更新 Intent**：将候选 Intent 发布到黑板供 Manager 确认
 - **缺失补足**（被动响应）：仅当 Manager 判定候选 Intent 存在缺失（缺少任意一类 / 无支撑 Fact / 差异度 < 0.3）并通知时，才进行补生成
+
+### Proposer 生成候选的输入
+
+| 输入 | 来源 | 用途 |
+|------|------|------|
+| **Facts** | 黑板读取 | 作为制约条件，确保 Intent 有事实支撑 |
+| **Hints** | 黑板读取 | 作为环境输入，提供额外线索 |
+| **上一轮 Next Intent 建议** | 黑板读取 | 作为方向参考，引导下一轮 Intent |
+| **task_description** | 任务主题 | 保持任务目标一致 |
 
 ### 不承担
 
 - **不做评判**：不负责判断候选 Intent 是否"足够好"，该职责归 Manager
-- **不做 EI 评估**：EI 评估是 Manager（辅助选择）和 Auditor（门控）的职责
+- **不做 EI 评估**：EI 评估是 Manager（辅助选择）和 Auditor（审计）的职责
 
 ---
 
