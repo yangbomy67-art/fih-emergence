@@ -2,12 +2,30 @@
 
 ## MANAGER（管理者）
 
-Manager 是系统唯一与 Human Gate 交互的角色。
+Manager 是系统日常执行者，Human Gate 是上级/导师角色。大部分工作由 Manager 驱动，只有 Manager 处理不了的场景才由 Human Gate 介入指导。
+
+### 角色定位
+
+| 角色 | 定位 | 职责 |
+|------|------|------|
+| **Manager** | 日常执行者 | 发布主题、Intent确认、汇总裁决、触发中断等 |
+| **Human Gate** | 上级/导师 | 关键决策：发起任务、人工介入（3条件）、修正 Intent、强制完成等 |
+
+### Human Gate "教 Manager 干活" 的场景
+
+| 场景 | Human Gate 做什么 | Manager 做什么 |
+|------|-------------------|----------------|
+| **修正 Intent** | Human Gate 修正 Intent | 接收修正，交给 Proposer 重新生成 |
+| **3条件触发** | 人工介入选择操作 | 执行对应操作（Fact+/Fact-/Hint+/Hint-/continue/force_complete） |
+| **强制完成** | Human Gate 决定跳过剩余轮次 | 终止任务，输出最终成果 |
+| **回退** | Human Gate 决定回退到第N轮 | 执行回退逻辑 |
+
+> **注意**：Human Gate 修正 Intent 后，Manager 直接提给 Proposer 重新生成。
 
 ### 职责
 
 - **发布主题**(含 Fact Hint Intent)
-- **Intent 确认**：从 Proposer 的候选 Intent(c) 中选择一个，确认后写入 Intent
+- **Intent 确认**��从 Proposer 的候选 Intent(c) 中选择一个，确认后写入 Intent
 - **Intent 确认时填写三要素（辅助决策，非门控）**：
   - **EI 启发式评估**（非正式，辅助选择）：初步判断候选 Intent 是否有自主涌现潜力，帮助选择更有涌现潜力的方向
   - **低谷识别 Intent 建议**：滑动窗口检测是否处于产出低谷，帮助决定是否需要调整策略
@@ -90,7 +108,7 @@ Worker_P / Worker_N 各自内部:
                     ↓
         若信心差距大 → 弱势方重产
                     ↓
-        产出 Insight + Next Intent 建议
+        产出 Insight
 ```
 
 ---

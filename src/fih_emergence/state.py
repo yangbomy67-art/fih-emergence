@@ -40,7 +40,6 @@ class WorkerSubmission(BaseModel):
     """Worker 产出"""
     worker_id: str  # "worker_p" or "worker_n"
     insight: str
-    next_intent_suggestions: list[str] = Field(default_factory=list)
     self_confidence: float = Field(ge=0, le=100)
 
 

@@ -64,7 +64,6 @@ class Worker:
             if isinstance(parsed, dict):
                 insight = parsed.get("insight", content[:200])
                 confidence = parsed.get("self_confidence", 75.0)
-                suggestions = parsed.get("next_intent_suggestions", [])
                 return {
                     "insight": insight,
                     "self_confidence": confidence,
@@ -97,14 +96,6 @@ class Worker:
             "self_confidence": 50.0,
             "_raw_content": content,
             "_parse_status": "failed",
-        }
-
-        return {
-            "prompt": prompt,
-            "worker_id": self.worker_id,
-            "insight": insight,
-            "self_confidence": confidence,
-            "next_intent_suggestions": suggestions,
         }
 
     async def rebuttal(

@@ -132,8 +132,7 @@ Hints: {hints}
   "insight": "你的推理结论",
   "supporting_facts": ["F1", "F2"],
   "reasoning": "推理过程",
-  "self_confidence": 85.0,
-  "next_intent_suggestions": ["建议1", "建议2"]
+  "self_confidence": 85.0
 }}
 ```
 """
