@@ -157,16 +157,29 @@ def create_initial_state(
     session_id: str,
     task_description: str,
     max_iterations: int = 20,
+    initial_facts: list[dict] = None,
+    initial_hints: list[dict] = None,
 ) -> FIHState:
     """创建初始状态"""
+    # 处理初始 facts
+    facts = initial_facts if initial_facts else []
+    if facts and isinstance(facts[0], str):
+        # 兼容 list[str] 格式
+        facts = [{"content": f, "source": "user"} for f in facts]
+    
+    # 处理初始 hints
+    hints = initial_hints if initial_hints else []
+    if hints and isinstance(hints[0], str):
+        hints = [{"content": h, "source": "user"} for h in hints]
+    
     return {
         "task_description": task_description,
         "mode": "FULL",
         "session_id": session_id,
         "current_round": 1,
         "max_iterations": max_iterations,
-        "facts": [],
-        "hints": [],
+        "facts": facts,
+        "hints": hints,
         "intents": [],
         "worker_submissions": [],
         "worker_count": 2,

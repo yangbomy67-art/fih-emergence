@@ -376,6 +376,8 @@ async def run_session(
         session_id=session_id,
         task_description=task_description,
         max_iterations=max_iterations,
+        initial_facts=initial_facts,
+        initial_hints=initial_hints,
     )
     await update_session(session_id, task_status="running")
     
