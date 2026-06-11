@@ -111,16 +111,38 @@ def generate_report_from_history(
 
 ### 核心洞察
 
-基于对该命题的深入分析，我们从多个维度展开探索。"""
+"""
     
-    # 动态生成核心洞察
-    if rounds_history:
-        first_intent = "无"
-        if rounds_history[0].get("intents"):
-            first_intent = rounds_history[0]["intents"][0].get("content", "无")[:30]
+    # 动态生成核心洞察（按SPEC规则）
+    if rounds_history and facts:
+        # 获取第一轮的事实和意图
+        first_round = rounds_history[0]
+        first_intent = ""
+        if first_round.get("intents"):
+            first_intent = first_round["intents"][0].get("content", "")[:40]
         
+        # 获取所有Facts内容
+        fact_contents = [f.get("content", "") for f in facts[:3]]
+        
+        # 获取Hints内容
+        hint_contents = [h.get("content", "") for h in hints[:2]] if hints else []
+        
+        # 构建核心洞察（遵循SPEC规则）
         md += f"""
-系统从"{first_intent}..."这一意图出发，通过正反两方的对抗性分析，逐步深化对该问题的理解。
+基于对该命题的深入分析，我们从两个核心发现出发：{fact_contents[0] if fact_contents else '系统初步分析'}。
+
+在"{first_intent}..."这一意图的引导下，系统从两个方向展开分析：一是从正向角度探讨可能性，二是从反向角度审视潜在风险。两个方向的碰撞形成张力，��终推动认知的深化。
+
+随着分析深入，系统将关注点转向{hint_contents[0] if hint_contents else '新的分析维度'}。此时，正向与反向的博弈进入新阶段——不再是简单的方向选择，而是寻求两种视角的融合。
+
+系统通过引入新的分析维度，为这个问题提供了更加全面的认知框架。整体分析表明，问题的复杂性需要多角度的审视，而正是这种多维度的思考方式，推动了洞察的涌现。
+"""
+    else:
+        # 无数据时的默认输出
+        md += """
+基于对该命题的深入分析，我们从多个维度展开探索。
+
+系统通过正反两方的对抗性分析，逐步深化对该问题的理解。
 
 随着分析深入，系统积累了多轮次的 Intents 和 Insights，这些产出形成了对问题的系统性认知。
 """
