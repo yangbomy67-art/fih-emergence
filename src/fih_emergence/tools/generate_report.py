@@ -78,7 +78,7 @@ def generate_report_from_history(
             except:
                 intent_content = raw_intent
             # 清理换行符和多余空白
-            intent_content = ' '.join(intent_content.split())[:60]
+            intent_content = ' '.join(intent_content.split())[:200]
         
         # Worker 产出（完整内容，80字符）
         worker_a = "无"
@@ -100,7 +100,7 @@ def generate_report_from_history(
                         content0 = parsed.get('insight', content0)
                 except:
                     pass
-                worker_a = content0[:80]
+                worker_a = content0[:200]
                 conf_a = f"{w0.get('confidence', w0.get('self_confidence', 0)):.0f}%"
             
             # Worker B (反方/worker_n)
@@ -115,7 +115,7 @@ def generate_report_from_history(
                         content1 = parsed.get('insight', content1)
                 except:
                     pass
-                worker_b = content1[:80]
+                worker_b = content1[:200]
                 conf_b = f"{w1.get('confidence', w1.get('self_confidence', 0)):.0f}%"
             
             # 计算胜出方（比较confidence）

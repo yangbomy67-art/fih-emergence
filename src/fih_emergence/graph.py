@@ -302,14 +302,14 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             valley_operation = "diversify_intent"
     
     # === 涌现成功检测 ===
-    # 连续 2 轮 EI >= 15 → 任务完成
+    # 连续 2 轮 EI >= 30 → 任务完成（强因果涌现）
     emergence_detected = False
     emergence_operation = "none"
     
-    if ei_score >= 15 and len(valley_signals) >= 2:
-        # 检查前一轮是否也 >= 15
+    if ei_score >= 30 and len(valley_signals) >= 2:
+        # 检查前一轮是否也 >= 30
         prev_ei = valley_signals[-2].get("ei_score", 0) if len(valley_signals) >= 2 else 0
-        if prev_ei >= 15:
+        if prev_ei >= 30:
             emergence_detected = True
             emergence_operation = "emergence_success"
     
@@ -466,7 +466,7 @@ async def run_session(
         emergence_detected = state.get("emergence_detected", False)
         emergence_operation = state.get("emergence_operation", "none")
         if emergence_detected and emergence_operation == "emergence_success":
-            print(f"  → 涌现成功！连续 2 轮 EI >= 15，任务完成")
+            print(f"  → 涌现成功！连续 2 轮 EI >= 30，任务完成")
             state["task_complete"] = True
             state["task_boundary_status"] = "closed"
             
