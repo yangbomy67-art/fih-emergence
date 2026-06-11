@@ -7,13 +7,17 @@ Manager 是系统唯一与 Human Gate 交互的角色。
 ### 职责
 
 - **发布主题**(含 Fact Hint Intent)
-- **Intent 确认(同时完成三要素)**：
-  - EI 启发式评估 (非正式，辅助选择)：初步判断候选 Intent 是否有自主涌现潜力
-  - 低谷识别 Intent 建议：滑动窗口检测是否处于产出低谷
-  - Next Intent 建议：基于当前轮 Facts + 已有 Intent 方向，建议 1-3 条后续 Intent 方向
+- **Intent 确认**：从 Proposer 的候选 Intent(c) 中选择一个，确认后写入 Intent
+- **Intent 确认时填写三要素（辅助决策，非门控）**：
+  - **EI 启发式评估**（非正式，辅助选择）：初步判断候选 Intent 是否有自主涌现潜力，帮助选择更有涌现潜力的方向
+  - **低谷识别 Intent 建议**：滑动窗口检测是否处于产出低谷，帮助决定是否需要调整策略
+  - **Next Intent 建议**：基于当前轮 Facts + 已有 Intent 方向，建议 1-3 条后续 Intent 方向，为下一轮 Proposer 提供参考
 - **汇总裁决**：审核 fact_candidates、hint_candidates，执行低谷穿越策略
-- **Hint→Fact 升格评估**：对 Auditor 建议升格的 Hint 进行全局评估
-- **Human Gate 通信（唯一接口）**
+- **Fact 升格裁决**：审核 Auditor 提取的 fact_candidates，决定是否写入 Facts
+- **Hint→Fact 升格评估**：对 Auditor 建议升格的 Hint 进行全局评估，决定是否升格
+- **Human Gate 通信**：唯一与 Human Gate 交互的角色
+
+> **注意**：三要素是"辅助决策"而非"门控"。不通过不会阻止流程，只是影响选择偏好。
 
 ### 低谷穿越
 
@@ -38,12 +42,14 @@ Manager 是系统唯一与 Human Gate 交互的角色。
 
 ### Proposer 生成候选的输入
 
-| 输入 | 来源 | 用途 |
+| 输入 | 来源 | 状态 |
 |------|------|------|
-| **Facts** | 黑板读取 | 作为制约条件，确保 Intent 有事实支撑 |
-| **Hints** | 黑板读取 | 作为环境输入，提供额外线索 |
-| **上一轮 Next Intent 建议** | 黑板读取 | 作为方向参考，引导下一轮 Intent |
-| **task_description** | 任务主题 | 保持任务目标一致 |
+| **Facts** | 黑板读取 | ✅ 已实现 |
+| **Hints** | 黑板读取 | ✅ 已实现 |
+| **上一轮 Next Intent 建议** | Manager 填写，Proposer 读取 | ⚠️ 待实现（需要 Manager 写入 + Proposer 读取） |
+| **task_description** | 任务主题（数据库/内存） | ✅ 已实现 |
+
+> **待实现**：当前代码中 Manager 填写 Next Intent 建议后未持久化供 Proposer 读取，需要新增字段并实现读写逻辑。
 
 ### 不承担
 
