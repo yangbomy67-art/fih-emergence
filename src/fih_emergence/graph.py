@@ -371,6 +371,24 @@ async def run_session(
         
         print(f"Round {round_num}: valley_detected={state.get('valley_detected')}, operation={state.get('valley_operation')}")
         
+        # === 保存轮次数据（每轮都保存）===
+        valley_signals = state.get("valley_signals", [])
+        round_ei = 0
+        for sig in valley_signals:
+            if sig.get("round") == round_num:
+                round_ei = sig.get("ei_score", 0)
+                break
+        
+        rounds_history.append({
+            "round": round_num,
+            "intents": state.get("intents", []),
+            "worker_submissions": state.get("worker_submissions", []),
+            "ei_score": round_ei,
+            "facts": state.get("facts", []),
+            "hints": state.get("hints", []),
+            "audit_result": state.get("audit_result", {}),
+        })
+        
         # === 检查终止条件 ===
         valley_detected = state.get("valley_detected", False)
         valley_operation = state.get("valley_operation", "none")
@@ -378,24 +396,6 @@ async def run_session(
         # 终止条件 1: 达到 max_rounds
         if round_num >= max_iterations:
             print(f"  → 达到最大轮数 {max_iterations}，终止")
-            
-            # 保存轮次数据到历史
-            valley_signals = state.get("valley_signals", [])
-            round_ei = 0
-            for sig in valley_signals:
-                if sig.get("round") == round_num:
-                    round_ei = sig.get("ei_score", 0)
-                    break
-            
-            rounds_history.append({
-                "round": round_num,
-                "intents": state.get("intents", []),
-                "worker_submissions": state.get("worker_submissions", []),
-                "ei_score": round_ei,
-                "facts": state.get("facts", []),
-                "hints": state.get("hints", []),
-                "audit_result": state.get("audit_result", {}),
-            })
             
             await update_session(
                 session_id,
@@ -423,23 +423,6 @@ async def run_session(
             print(f"  → 涌现成功！连续 2 轮 EI >= 15，任务完成")
             state["task_complete"] = True
             state["task_boundary_status"] = "closed"
-            
-            # 保存轮次数据
-            valley_signals = state.get("valley_signals", [])
-            round_ei = 0
-            for sig in valley_signals:
-                if sig.get("round") == round_num:
-                    round_ei = sig.get("ei_score", 0)
-                    break
-            rounds_history.append({
-                "round": round_num,
-                "intents": state.get("intents", []),
-                "worker_submissions": state.get("worker_submissions", []),
-                "ei_score": round_ei,
-                "facts": state.get("facts", []),
-                "hints": state.get("hints", []),
-                "audit_result": state.get("audit_result", {}),
-            })
             
             await update_session(session_id, task_status="completed")
             break
@@ -500,17 +483,8 @@ async def run_session(
                 round_ei = sig.get("ei_score", 0)
                 break
         
-        rounds_history.append({
-            "round": round_num,
-            "intents": state.get("intents", []),
-            "worker_submissions": state.get("worker_submissions", []),
-            "ei_score": round_ei,
-            "facts": state.get("facts", []),
-            "hints": state.get("hints", []),
-        })
-    
-    # 全部完成后标记
-    state["task_complete"] = True
+        # 全部完成后标记
+        state["task_complete"] = True
     state["task_boundary_status"] = "closed"
     
     # 保存最终状态
