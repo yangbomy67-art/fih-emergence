@@ -193,19 +193,10 @@ B. 时间稳定性：最近 3 轮是否持续强化？
 C. 跨路径一致性：以不同 Intent 重新推演是否收敛？
 D. 可传递性：能否作为新任务起点？
 
-## 输出
-```json
-{{
-  "passed": true/false,
-  "scores_4d": {{"A": 8, "B": 7, "C": 6, "D": 9}},
-  "result_ei": 30.0,
-  "result_ei_S1": 4,
-  "result_ei_S2": 5,
-  "result_ei_S3": 10,
-  "fact_candidates": [...],
-  "valley_detected": false
-}}
-```
+## 输出要求（重要）
+直接输出 JSON，不要任何思考过程、解释或 markdown 标记。
+格式：
+{{"passed": true/false, "scores_4d": {{"A": 8, "B": 7, "C": 6, "D": 9}}, "result_ei": 25, "fact_candidates": [{{"content": "xxx", "source": "insight"}}], "valley_detected": false}}
 """
 
 AUDITOR_VALLEY_CHECK = """检测低谷：

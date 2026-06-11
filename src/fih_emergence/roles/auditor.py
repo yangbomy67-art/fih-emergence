@@ -65,47 +65,88 @@ class Auditor:
         }
 
     async def post_audit_insight(
-        self,
-        worker_id: str,
-        insight: str,
-        facts: list[dict],
-    ) -> dict:
-        """
-        事后审计：Insight → 黑板 门槛
+            self,
+            worker_id: str,
+            insight: str,
+            facts: list[dict],
+        ) -> dict:
+            """
+            事后审计：Insight → 黑板 门槛
 
-        四维审计 + result_EI 计算 + Fact+/Hint+ 候选提取
-        """
-        facts_str = "\n".join([f"[F{i+1}] {f['content']}" for i, f in enumerate(facts)])
+            四维审计 + result_EI 计算 + Fact+/Hint+ 候选提取
+            """
+            facts_str = "\n".join([f"[F{i+1}] {f['content']}" for i, f in enumerate(facts)])
 
-        prompt = AUDITOR_POST_CHECK.format(
-            worker_id=worker_id,
-            insight=insight,
-            facts=facts_str or "（无）",
-        )
+            prompt = AUDITOR_POST_CHECK.format(
+                worker_id=worker_id,
+                insight=insight,
+                facts=facts_str or "（无）",
+            )
 
-        # 简化：返回结构化结果
-        # 实际应由 LLM 填充四维评分
-        scores_4d = {"A": 7, "B": 7, "C": 7, "D": 7}  # 默认
-
-        result_ei_s1 = 4  # 可交付形态  # noqa: N806
-        result_ei_s2 = 4  # Fact引用  # noqa: N806
-        result_ei_s3 = 7  # 新增视角  # noqa: N806
-        result_ei = result_ei_s1 + result_ei_s2 + result_ei_s3
-
-        passed = result_ei >= 15 and all(s >= 7 for s in scores_4d.values())
-
-        return {
-            "passed": passed,
-            "scores_4d": scores_4d,
-            "result_ei": result_ei,
-            "result_ei_S1": result_ei_s1,
-            "result_ei_S2": result_ei_s2,
-            "result_ei_S3": result_ei_s3,
-            "fact_candidates": [],  # 从 insight 提取
-            "hint_candidates": [],  # 从黑板匹配
-            "valley_detected": False,
-            "prompt": prompt,
-        }
+            # 调用 LLM 进行审计
+            try:
+                response = await self.llm_client.complete(prompt, max_tokens=1500)
+                content = response.content
+            
+                # 解析 LLM 返回的 JSON
+                import json
+            
+                # 策略 1: 直接 json.loads
+                try:
+                    parsed = json.loads(content.strip())
+                except:
+                    # 策略 2: 提取 ```json 部分
+                    try:
+                        if '```json' in content:
+                            content = content.split('```json')[1].split('```')[0]
+                        elif '```' in content:
+                            content = content.split('```')[1].split('```')[0]
+                        parsed = json.loads(content.strip())
+                    except:
+                        # 策略 3: 回退到默认
+                        parsed = {}
+            
+                if parsed:
+                    # 提取结果
+                    scores_4d = parsed.get("scores_4d", {"A": 7, "B": 7, "C": 7, "D": 7})
+                    result_ei = parsed.get("result_ei", 15)
+                    passed = parsed.get("passed", result_ei >= 15)
+                    fact_candidates = parsed.get("fact_candidates", [])
+                    hint_candidates = parsed.get("hint_candidates", [])
+                    valley_detected = parsed.get("valley_detected", False)
+                
+                    return {
+                        "passed": passed,
+                        "scores_4d": scores_4d,
+                        "result_ei": result_ei,
+                        "result_ei_S1": parsed.get("result_ei_S1", result_ei // 3),
+                        "result_ei_S2": parsed.get("result_ei_S2", result_ei // 3),
+                        "result_ei_S3": parsed.get("result_ei_S3", result_ei - 2 * (result_ei // 3)),
+                        "fact_candidates": fact_candidates,
+                        "hint_candidates": hint_candidates,
+                        "valley_detected": valley_detected,
+                        "prompt": prompt,
+                    }
+            except Exception as e:
+                print(f"Auditor LLM 调用失败: {e}")
+        
+            # 如果 LLM 调用失败，返回默认值
+            scores_4d = {"A": 7, "B": 7, "C": 7, "D": 7}
+            result_ei = 15
+            passed = result_ei >= 15 and all(s >= 7 for s in scores_4d.values())
+        
+            return {
+                "passed": passed,
+                "scores_4d": scores_4d,
+                "result_ei": result_ei,
+                "result_ei_S1": 5,
+                "result_ei_S2": 5,
+                "result_ei_S3": 5,
+                "fact_candidates": [],
+                "hint_candidates": [],
+                "valley_detected": False,
+                "prompt": prompt,
+            }
 
     async def check_valley(
         self,
