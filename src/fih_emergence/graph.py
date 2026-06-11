@@ -7,7 +7,16 @@ LangGraph Workflow - 工作流编排（多轮版）
 
 import asyncio
 import json
+import logging
 from typing import List
+
+# 配置 logger
+logger = logging.getLogger("fih.graph")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
 from langgraph.graph import END, StateGraph
 
 from fih_emergence.state import FIHState, create_initial_state
@@ -161,7 +170,7 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             
             if new_facts:
                 state["facts"] = existing_facts + new_facts
-                print(f"[INFO] 新增 {len(new_facts)} 条 Fact 到黑板")
+                logger.info(f"[INFO] 新增 {len(new_facts)} 条 Fact 到黑板")
         
         # === 将 hint_candidates 写入黑板 ===
         hint_cands = result.get("hint_candidates", [])
@@ -192,7 +201,7 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             
             if new_hints:
                 state["hints"] = existing_hints + new_hints
-                print(f"[INFO] 新增 {len(new_hints)} 条 Hint 到黑板")
+                logger.info(f"[INFO] 新增 {len(new_hints)} 条 Hint 到黑板")
             
             # === Manager 评估：Hint 升格为 Fact ===
             if hints_to_promote:
@@ -217,10 +226,10 @@ async def node_auditor_post(state: FIHState) -> FIHState:
                                 existing_facts = state["facts"]
                                 existing_fact_contents.add(hint_content)
                                 promoted_count += 1
-                                print(f"[INFO] Manager 评估通过：Hint 升格为 Fact: {hint_content[:40]}...")
+                                logger.info(f"[INFO] Manager 评估通过：Hint 升格为 Fact: {hint_content[:40]}...")
                 
                 if promoted_count > 0:
-                    print(f"[INFO] 本轮共 {promoted_count} 条 Hint 升格为 Fact")
+                    logger.info(f"[INFO] 本轮共 {promoted_count} 条 Hint 升格为 Fact")
     else:
         result = {}
     
@@ -320,8 +329,8 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     valley_type = ""
     valley_operation = "none"
     
-    if no_fact_rounds >= 4:
-        # 连续 4+ 轮无 Fact+ → 低谷穿越失败，触发人工介入
+    if no_fact_rounds >= 3:
+        # 连续 3+ 轮无 Fact+ → 低谷穿越失败，触发人工介入
         valley_detected = True
         valley_type = "no_fact"
         valley_operation = "force_human_intervention"
@@ -430,7 +439,7 @@ async def run_session(
         # 执行一轮工作流
         state = await workflow.ainvoke(state)
         
-        print(f"Round {round_num}: valley_detected={state.get('valley_detected')}, operation={state.get('valley_operation')}")
+        logger.info(f"Round {round_num}: valley_detected={state.get('valley_detected')}, operation={state.get('valley_operation')}")
         
         # === 保存轮次数据（每轮都保存）===
         valley_signals = state.get("valley_signals", [])
@@ -456,7 +465,7 @@ async def run_session(
         
         # 终止条件 1: 达到 max_rounds
         if round_num >= max_iterations:
-            print(f"  → 达到最大轮数 {max_iterations}，终止")
+            logger.info(f"  → 达到最大轮数 {max_iterations}，终止")
             
             # WebSocket 推送: 3条件 - 达到最大轮次
             try:
@@ -484,7 +493,7 @@ async def run_session(
         if valley_detected and valley_operation == "force_human_intervention":
             state["needs_human"] = True
             state["human_intervention_reason"] = f"低谷穿越失败 (valley_type={state.get('valley_type')})"
-            print(f"  → 低谷穿越失败，触发人工介入: {state['human_intervention_reason']}")
+            logger.info(f"  → 低谷穿越失败，触发人工介入: {state['human_intervention_reason']}")
             
             # WebSocket 推送: 3条件 - 低谷穿越失败
             try:
@@ -500,11 +509,11 @@ async def run_session(
             await update_session(session_id, task_status="paused", human_intervention_reason=state["human_intervention_reason"])
             break
         
-        # 终止条件 3: 涌现成功（连续 2 轮 EI >= 15）
+        # 终止条件 3: 涌现成功（连续 2 轮 EI >= 30）
         emergence_detected = state.get("emergence_detected", False)
         emergence_operation = state.get("emergence_operation", "none")
         if emergence_detected and emergence_operation == "emergence_success":
-            print(f"  → 涌现成功！连续 2 轮 EI >= 30，任务完成")
+            logger.info("  → 涌现成功！连续 2 轮 EI >= 30，任务完成")
             state["task_complete"] = True
             state["task_boundary_status"] = "closed"
             
@@ -524,19 +533,19 @@ async def run_session(
         
         # 低谷穿越尝试：产出停滞后首次触发，继续下一轮
         if valley_detected and valley_operation == "valley_traverse":
-            print(f"  → 检测到产出停滞，尝试低谷穿越（继续下一轮）")
+            logger.info("  → 检测到产出停滞，尝试低谷穿越（继续下一轮）")
             # 继续下一轮，让 Proposer 生成多样化 Intent
         
         # 低谷穿越：EI 持续低，尝试多���化（继续下一轮）
         if valley_detected and valley_operation == "diversify_intent":
-            print(f"  → 检测到 EI 持续低，尝试低谷穿越（继续）")
+            logger.info("  → 检测到 EI 持续低，尝试低谷穿越（继续）")
         
         # === 弱势方重产处理 ===
         need_rebuttal = state.get("need_rebuttal", False)
         rebuttal_type = state.get("rebuttal_type", "")
         
         if need_rebuttal:
-            print(f"  → 置信度异常检测: {rebuttal_type}，弱势方重产")
+            logger.info(f"  → 置信度异常检测: {rebuttal_type}，弱势方重产")
             state["rebuttal_triggered"] = True
             
             # 获取两个 Worker 的产出
@@ -562,7 +571,7 @@ async def run_session(
                     # 更新弱势方产出
                     worker_n_sub["insight"] = new_insight_result.get("insight", weak_insight)
                     worker_n_sub["confidence"] = new_insight_result.get("self_confidence", weak_confidence)
-                    print(f"  → Worker N 重产完成(conf={worker_n_sub['confidence']})")
+                    logger.info(f"  → Worker N 重产完成(conf={worker_n_sub['confidence']})")
                     
                 elif "n_dominant" in rebuttal_type and worker_p_sub:
                     # N强P弱，Worker P 弱势，重产
@@ -580,7 +589,7 @@ async def run_session(
                     # 更新弱势方产出
                     worker_p_sub["insight"] = new_insight_result.get("insight", weak_insight)
                     worker_p_sub["confidence"] = new_insight_result.get("self_confidence", weak_confidence)
-                    print(f"  → Worker P 重产完成(conf={worker_p_sub['confidence']})")
+                    logger.info(f"  → Worker P 重产完成(conf={worker_p_sub['confidence']})")
         
         # === 产出重复检测 ===
         duplicate_detected = state.get("duplicate_detected", False)
@@ -588,7 +597,7 @@ async def run_session(
         if duplicate_detected and duplicate_operation == "force_human_intervention":
             state["needs_human"] = True
             state["human_intervention_reason"] = "连续 2 轮产出相同"
-            print(f"  → 产出重复，触发人工介入")
+            logger.info("  → 产出重复，触发人工介入")
             await update_session(session_id, task_status="paused", human_intervention_reason="连续 2 轮产出相同")
             break
         
@@ -597,7 +606,7 @@ async def run_session(
         if fact_conflict_detected:
             state["needs_human"] = True
             state["human_intervention_reason"] = "Fact 存在矛盾"
-            print(f"  → Fact 冲突，触发人工介入")
+            logger.info("  → Fact 冲突，触发人工介入")
             # 设置为 paused 状态，等待人工介入
             await update_session(session_id, task_status="paused", human_intervention_reason="Fact 存在矛盾")
             break
@@ -650,9 +659,9 @@ async def run_session(
         md_path = os.path.join(results_dir, f"{session_id}.md")
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(md)
-        print(f"\n📄 Markdown 报告已生成: {md_path}")
+        logger.info(f"Markdown 报告已生成: {md_path}")
     except Exception as e:
-        print(f"\n⚠️ Markdown 报告生成失败: {e}")
+        logger.error(f"Markdown 报告生成失败: {e}")
     
     # 返回完整状态 + 轮次历史
     state["rounds_history"] = rounds_history

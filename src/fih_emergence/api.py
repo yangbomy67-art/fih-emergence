@@ -372,7 +372,7 @@ async def websocket_events(websocket: WebSocket, session_id: str = None):
     try:
         # 接收 session_id
         data = await websocket.receive_text()
-        message = eval(data)  # 简化：实际应该 JSON parse
+        message = json.loads(data)  # 使用 json.loads 替代 eval (安全)
         session_id = message.get("session_id")
 
         if not session_id:

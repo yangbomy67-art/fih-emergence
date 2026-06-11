@@ -72,10 +72,9 @@ ei:
 interrupt:
   # 置信度异常阈值
   confidence_anomaly:
-    dominant_threshold: 90
+    # 弱势方重产: 正方>80% 且 反方<30% 或 反方>80% 且 正方<30%
+    dominant_threshold: 80
     weak_threshold: 30
-    stalemate_min: 45
-    stalemate_max: 55
 
   # 产出停滞检测
   output_stagnation:

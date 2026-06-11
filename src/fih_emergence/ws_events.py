@@ -69,7 +69,7 @@ class WSEvent:
     TASK_FAILED = "task_failed"
 
     # 4 条件中断推送
-    EMERGENCE_SUCCESS = "emergence_success"  # 涌现成功 (连续2轮EI>=15)
+    EMERGENCE_SUCCESS = "emergence_success"  # 涌现成功 (连续2轮EI>=30)
     VALLEY_UNRESOLVED = "valley_unresolved"  # 低谷穿越失败 (4+轮无Fact+)
     DUPLICATE_OUTPUT = "duplicate_output"  # 产出重复 (连续2轮相同)
     FACT_CONFLICT = "fact_conflict"  # Fact冲突
@@ -138,7 +138,7 @@ async def push_task_completed(session_id: str, round_num: int, final_output: str
 
 
 async def push_emergence_success(session_id: str, round_num: int, ei_score: float) -> None:
-    """推送涌现成功（连续2轮EI>=15）"""
+    """推送涌现成功（连续2轮EI>=30）"""
     event = create_event(
         WSEvent.EMERGENCE_SUCCESS,
         session_id,

@@ -35,7 +35,7 @@ Intents: {intents}
 
 MANAGER_CHECK_INTERRUPT = """检测 4 条件是否触发：
 
-1. 置信度异常: 正方>90% 且 反方<30%，或 45-55 僵持
+1. 置信度异常: 正方>80% 且 反方<30%，或 反方>80% 且 正方<30%
 2. 产出停滞: 连续 {no_fact_rounds} 轮无 Fact+
 3. 产出重复: 连续 {consecutive_same_output} 轮产出相同
 4. Fact 冲突: {fact_conflicts}
@@ -241,7 +241,7 @@ Facts: {facts}
 - result_EI = S1 + S2 + S3
 
 ## 判定阈值
-- 涌现: result_EI >= 15 且 四维每维 >= 7
-- 常规: result_EI < 15 或 四维有低于 7 的维度
+- 涌现: result_EI >= 30 且 四维每维 >= 7 (强因果涌现)
+- 常规: result_EI 15-29 或 四维有低于 7 的维度
 - 退化: 四维有 0 分项
 """

@@ -25,7 +25,7 @@ Manager 是系统日常执行者，Human Gate 是上级/导师角色。大部分
 ### 职责
 
 - **发布主题**(含 Fact Hint Intent)
-- **Intent 确认**��从 Proposer 的候选 Intent(c) 中选择一个，确认后写入 Intent
+- **Intent 确认**：从 Proposer 的候选 Intent(c) 中选择一个，确认后写入 Intent
 - **Intent 确认时填写三要素（辅助决策，非门控）**：
   - **EI 启发式评估**（非正式，辅助选择）：初步判断候选 Intent 是否有自主涌现潜力，帮助选择更有涌现潜力的方向
   - **低谷识别 Intent 建议**：滑动窗口检测是否处于产出低谷，帮助决定是否需要调整策略
@@ -140,7 +140,7 @@ Worker_P / Worker_N 各自内部:
 - 通信：HTTP API ↔ FIH Backend Service
 ### 3 条件中断（需要人工介入）
 
-- 低谷穿越失败: 连续 4+ 轮无 Fact+ → 人工介入
+- 低谷穿越失败: 连续 3+ 轮无 Fact+ → 人工介入
 - 产出重复: 连续 2 轮产出相同 → 人工介入
 - Fact 冲突: 黑板中现有 Fact 存在矛盾 → 人工介入
 

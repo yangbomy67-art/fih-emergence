@@ -65,12 +65,9 @@ class EIConfig:
 
 @dataclass
 class InterruptConfig:
-    """中断条件配置"""
-
-    dominant_threshold: int = 90
+    # 弱势方重产: 正方>80% 且 反方<30% 或 反方>80% 且 正方<30%
+    dominant_threshold: int = 80
     weak_threshold: int = 30
-    stalemate_min: int = 45
-    stalemate_max: int = 55
     no_fact_rounds_threshold: int = 3
     consecutive_same_output_threshold: int = 2
 
@@ -158,10 +155,8 @@ class Config:
             ic = data["interrupt"]
             # 展平嵌套结构
             config.interrupt = InterruptConfig(
-                dominant_threshold=ic.get("confidence_anomaly", {}).get("dominant_threshold", 90),
+                dominant_threshold=ic.get("confidence_anomaly", {}).get("dominant_threshold", 80),
                 weak_threshold=ic.get("confidence_anomaly", {}).get("weak_threshold", 30),
-                stalemate_min=ic.get("confidence_anomaly", {}).get("stalemate_min", 45),
-                stalemate_max=ic.get("confidence_anomaly", {}).get("stalemate_max", 55),
                 no_fact_rounds_threshold=ic.get("output_stagnation", {}).get("no_fact_rounds_threshold", 3),
                 consecutive_same_output_threshold=ic.get("output_stagnation", {}).get("consecutive_same_output_threshold", 2),
             )
