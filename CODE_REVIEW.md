@@ -104,7 +104,7 @@
 
 ---
 
-### Minor (4)
+### Minor (5)
 
 #### N1: Manager 角色职责简化
 - **Location**: graph.py:node_manager_start (line 63-65)
@@ -122,16 +122,25 @@
 
 #### N3: WebSocket 推送部分实现
 - **Location**: graph.py:run_session (lines 462-470, 489-498)
-- **Problem**: WebSocket 推送代码存在但可能因导入失败被跳过
-- **Impact**: 4 条件触发时客户端可能收不到推送
-- **SPEC Conflict**: SPEC_架构实现.md §4条件触发→WebSocket推送
-- **Recommendation**: 添加异常日志以便排查
+- **Problem**: WebSocket 推送代码存在但可��因导入失败被跳过
+- **Impact**: 3 条件触发时客户端可能收不到推送
+- **SPEC Conflict**: SPEC_架构实现.md §3条件触发→WebSocket推送
+- **Recommendation**: 添加异常日志以便排��
 
 #### N4: 置信度聚合公式未实现
 - **Location**: SPEC_EI.md 定义置信度聚合公式，代码中未找到
 - **Problem**: `置信度聚合 = (sum of 4d_scores) / (4 * 10) * 100%` 未实现
 - **Impact**: Manager 无法使用置信度聚合判定"产出充分"
 - **Recommendation**: 后续版本实现
+
+#### N5: Fact/Hint 升格未经过 Manager 裁决
+- **Location**: graph.py:node_auditor_post (lines 146-224)
+- **Problem**: 
+  - fact_candidates 直接写入黑板，未经过 Manager 裁决
+  - hint 升格在 auditor_post 节点内部执行，没有明确的 Manager 节点
+- **Impact**: 违反 SPEC 定义的"路径①：Worker → Auditor 提取 → Manager 裁决 → 黑板 Fact"
+- **SPEC Conflict**: SPEC_EI.md §Fact+ 升格的两条路径
+- **Recommendation**: 需要添加 Manager 裁决环节
 
 ---
 
