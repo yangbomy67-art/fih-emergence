@@ -374,6 +374,7 @@ async def run_session(
                 "ei_score": round_ei,
                 "facts": state.get("facts", []),
                 "hints": state.get("hints", []),
+                "audit_result": state.get("audit_result", {}),
             })
             
             await update_session(
@@ -417,6 +418,7 @@ async def run_session(
                 "ei_score": round_ei,
                 "facts": state.get("facts", []),
                 "hints": state.get("hints", []),
+                "audit_result": state.get("audit_result", {}),
             })
             
             await update_session(session_id, task_status="completed")
