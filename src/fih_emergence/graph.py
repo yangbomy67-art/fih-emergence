@@ -397,6 +397,17 @@ async def run_session(
         if round_num >= max_iterations:
             print(f"  → 达到最大轮数 {max_iterations}，终止")
             
+            # WebSocket 推送: 3条件 - 达到最大轮次
+            try:
+                from fih_emergence.api import manager
+                await manager.send_message(session_id, {
+                    "type": "interrupt_triggered",
+                    "condition": "max_rounds_reached",
+                    "context": {"round": round_num, "max_rounds": max_iterations}
+                })
+            except Exception:
+                pass  # API 未启动，跳过推送
+            
             await update_session(
                 session_id,
                 task_status="completed",
@@ -413,6 +424,18 @@ async def run_session(
             state["needs_human"] = True
             state["human_intervention_reason"] = f"低谷穿越失败 (valley_type={state.get('valley_type')})"
             print(f"  → 低谷穿越失败，触发人工介入: {state['human_intervention_reason']}")
+            
+            # WebSocket 推送: 3条件 - 低谷穿越失败
+            try:
+                from fih_emergence.api import manager
+                await manager.send_message(session_id, {
+                    "type": "interrupt_triggered",
+                    "condition": "valley_traverse_failed",
+                    "context": {"round": round_num, "valley_type": state.get("valley_type")}
+                })
+            except Exception:
+                pass
+            
             await update_session(session_id, task_status="paused", human_intervention_reason=state["human_intervention_reason"])
             break
         
@@ -423,6 +446,17 @@ async def run_session(
             print(f"  → 涌现成功！连续 2 轮 EI >= 15，任务完成")
             state["task_complete"] = True
             state["task_boundary_status"] = "closed"
+            
+            # WebSocket 推送: 3条件 - 涌现成功
+            try:
+                from fih_emergence.api import manager
+                await manager.send_message(session_id, {
+                    "type": "interrupt_triggered",
+                    "condition": "emergence_success",
+                    "context": {"round": round_num, "ei_score": round_ei}
+                })
+            except Exception:
+                pass
             
             await update_session(session_id, task_status="completed")
             break
