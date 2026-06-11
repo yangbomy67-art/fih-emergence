@@ -17,9 +17,10 @@ phase: integration-inventory
 | Date | Phase | Note |
 |------|-------|------|
 | 2026-06-11 | integration-inventory | SPEC Inventory 完成 |
+| 2026-06-11 | field-matrix | 字段对齐 100% |
 
 ---
 
 ## Next
 
-Phase 1: 字段矩阵
+Phase 2: Prompt 对齐

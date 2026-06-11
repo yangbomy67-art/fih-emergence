@@ -85,17 +85,30 @@
 
 ---
 
-## 关键未决问题汇总
+## Phase 1: 字段矩阵 (2026-06-11)
 
-| 问题 | 优先级 | 关联SPEC |
-|------|--------|----------|
-| 2轮运行时卡住 | Blocker | SPEC_架构实现.md |
-| Auditor LLM实现 | 已修复 | SPEC_EI.md |
-| WebSocket推送 | Major | SPEC_流程.md, SPEC_API.md |
-| 回退功能 | Major | SPEC_保护机制.md |
-| Fact累积写入 | Major | SPEC_黑板.md |
-| 4条件中断 | Major | SPEC_流程.md |
+### FIHState 字段对比
 
----
+| 字段 | SPEC | 代码 | 状态 |
+|------|------|------|------|
+| task_description | ✅ | ✅ | OK |
+| mode | ✅ | ✅ | OK |
+| facts/hints/intents | ✅ | ✅ | OK |
+| worker_submissions | ✅ | ✅ | OK |
+| audit_result | ✅ | ✅ | OK |
+| fact_plus_executed | ✅ | ✅ | OK |
+| valley_detected/signals | ✅ | ✅ | OK |
+| needs_human | ✅ | ✅ | OK |
+| task_complete | ✅ | ✅ | OK |
 
-> 下一阶段: Phase 1 - 字段矩阵
+### 结论
+
+- **SPEC 覆盖率**: 32/32 = 100%
+- **字段对齐**: ✅ 完全对齐
+- **新增字段**: emergence_detected/signals/operation
+
+### 需验证
+
+1. fact_conflicts 裁决逻辑 - 未实现
+2. emergence_signals 累积 - 需验证
+3. valley_report 使用 - 需验证
