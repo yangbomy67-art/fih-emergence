@@ -65,21 +65,33 @@ def generate_report_from_history(
         workers = r.get("worker_submissions", [])
         ei = r.get("ei_score", 0)
         
-        # Intent 内容
+        # Intent 内容（全长60字符）
         intent_content = "无"
         if intents and intents[0].get("content"):
-            intent_content = intents[0]["content"][:40]
+            raw_intent = intents[0]["content"]
+            # 尝试解析JSON
+            try:
+                if '```json' in raw_intent:
+                    raw_intent = raw_intent.split('```json')[1].split('```')[0]
+                parsed = json.loads(raw_intent.strip())
+                intent_content = parsed.get('intent', parsed.get('content', raw_intent))
+            except:
+                intent_content = raw_intent
+            # 清理换行符和多余空白
+            intent_content = ' '.join(intent_content.split())[:60]
         
-        # Worker 产出
+        # Worker 产出（完整内容，80字符）
         worker_a = "无"
         worker_b = "无"
         conf_a = "-"
         conf_b = "-"
+        winner = "-"
         
         if workers:
+            # Worker A (正方/worker_p)
             if len(workers) > 0:
                 w0 = workers[0]
-                content0 = w0.get("content", "")
+                content0 = w0.get("content", w0.get("insight", ""))
                 # 解析 JSON
                 try:
                     if '```json' in content0:
@@ -88,11 +100,13 @@ def generate_report_from_history(
                         content0 = parsed.get('insight', content0)
                 except:
                     pass
-                worker_a = content0[:30]
-                conf_a = f"{w0.get('confidence', 0):.0f}%"
+                worker_a = content0[:80]
+                conf_a = f"{w0.get('confidence', w0.get('self_confidence', 0)):.0f}%"
+            
+            # Worker B (反方/worker_n)
             if len(workers) > 1:
                 w1 = workers[1]
-                content1 = w1.get("content", "")
+                content1 = w1.get("content", w1.get("insight", ""))
                 # 解析 JSON
                 try:
                     if '```json' in content1:
@@ -101,10 +115,23 @@ def generate_report_from_history(
                         content1 = parsed.get('insight', content1)
                 except:
                     pass
-                worker_b = content1[:30]
-                conf_b = f"{w1.get('confidence', 0):.0f}%"
+                worker_b = content1[:80]
+                conf_b = f"{w1.get('confidence', w1.get('self_confidence', 0)):.0f}%"
+            
+            # 计算胜出方（比较confidence）
+            try:
+                conf_p = float(workers[0].get('confidence', workers[0].get('self_confidence', 0)))
+                conf_n = float(workers[1].get('confidence', workers[1].get('self_confidence', 0))) if len(workers) > 1 else 0
+                if conf_p > conf_n:
+                    winner = "A"
+                elif conf_n > conf_p:
+                    winner = "B"
+                else:
+                    winner = "平"
+            except:
+                winner = "-"
         
-        md += f"| {round_num} | {intent_content}... | - | {worker_a}... ({conf_a}) | {worker_b}... ({conf_b}) | - | {ei:.1f} |\n"
+        md += f"| {round_num} | {intent_content}... | - | {worker_a}... ({conf_a}) | {worker_b}... ({conf_b}) | {winner} | {ei:.1f} |\n"
     
     md += """
 ---
