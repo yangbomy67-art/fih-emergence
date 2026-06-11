@@ -7,7 +7,7 @@
 ## Phase
 
 ```
-phase: convergence
+phase: phase-2-baseline
 ```
 
 ---
