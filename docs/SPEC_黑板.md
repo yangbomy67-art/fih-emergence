@@ -21,6 +21,10 @@
 - **定义**：环境原始输入，包括用户给出的约束、偏好、禁忌、新数据、新上下文
 - **性质**：Hint 是未经解读的素材，权重由角色自行判断
 - **升格**：Hint 经验证后可被升格为 Fact
+  - Auditor 检测黑板 Hint 是否被 Worker 引用
+  - Auditor LLM 标记 suggest_promote_to_fact
+  - Manager 评估：检查内容是否已在 Facts 中
+  - 升格：Hint → Fact（source: "hint_promoted"）
 
 ## Round（轮次）
 

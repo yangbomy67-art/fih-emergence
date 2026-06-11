@@ -12,12 +12,19 @@ Manager 是系统唯一与 Human Gate 交互的角色。
   - 低谷识别 Intent 建议：滑动窗口检测是否处于产出低谷
   - Next Intent 建议：基于当前轮 Facts + 已有 Intent 方向，建议 1-3 条后续 Intent 方向
 - **汇总裁决**：审核 fact_candidates、hint_candidates，执行低谷穿越策略
+- **Hint→Fact 升格评估**：对 Auditor 建议升格的 Hint 进行全局评估
 - **Human Gate 通信（唯一接口）**
 
 ### 低谷穿越
 
 - Auditor 识别 + 建议，Manager 裁决 + 执行
 - **滑动窗口**：最近 3 轮，用于检测产出低谷
+
+### 置信度异常（弱势方重产）
+
+- 程序自动检测：P>80% 且 N<30% → Worker N 重产
+- 程序自动检测：N>80% 且 P<30% → Worker P 重产
+- 无需人工介入，Manager 不可干预
 
 ---
 

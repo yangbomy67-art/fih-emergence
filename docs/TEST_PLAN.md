@@ -10,13 +10,14 @@
 
 ### 1.1 单轮完整流程
 - [ ] Human Gate 发起任务 → Manager 接收
-- [ ] 黑板初始化（facts=[], hints=[]）
+- [ ] 黑板初始化（facts=[], hints=[], 支持 initial_facts/initial_hints）
 - [ ] Proposer 生成候选 Intent
 - [ ] Manager 确认 Intent (三要素)
 - [ ] Auditor 事前审计 (Intent → Worker 门槛)
 - [ ] 双 Worker GAN 对抗
 - [ ] Auditor 事后审计 (Insight → 黑板 门槛)
-- [ ] Manager 汇总裁决
+- [ ] Fact+/Hint+ 写入黑板（含去重）
+- [ ] **Hint→Fact 升格流程**（Auditor 标记 + Manager 评估）
 
 ### 1.2 多轮连续执行
 - [ ] Round 1 → Round 2 正常流转
@@ -46,13 +47,20 @@
 - [ ] S2 Fact 引用（满分 5）
 - [ ] S3 新增视角（满分 10）
 - [ ] result_EI = S1 + S2 + S3
-- [ ] 四维审计 A/B/C/D（每维 10 分）
-- [ ] 涌现判定：EI ≥ 15 且 四维每维 ≥ 7
+- [ ] 四维审计 A/B/C/D（每维 10 分，总分 40）
+- [ ] **涌现判定：连续 2 轮 EI ≥ 30**（总分 40 的 75%）
 
 ### 2.3 Fact+ 升格
 - [ ] Worker → Auditor 提取 → Manager 裁决 → 黑板
 - [ ] Hint → 相关度匹配 → Auditor 标注 → Manager 裁决 → 黑板
 - [ ] 两条路径都经过 Auditor + Manager
+
+### 2.4 Hint→Fact 升格流程（新增）
+- [ ] Auditor 检测黑板 Hint 是否被 Worker 引用
+- [ ] Auditor LLM 标记 suggest_promote_to_fact
+- [ ] Manager 评估：检查内容是否已在 Facts 中
+- [ ] 升格：Hint → Fact（source: "hint_promoted"）
+- [ ] 状态标记：Hint status = "promoted"
 
 ---
 
@@ -69,7 +77,7 @@
 - [ ] 低谷穿越：diversify_intent / force_human_intervention
 
 ### 3.3 涌现检测
-- [ ] 连续 2 轮 EI ≥ 15 → 涌现成功 → 自动终止
+- [ ] **连续 2 轮 EI ≥ 30** → 涌现成功 → 自动终止
 - [ ] 涌现触发后不继续执行剩余轮次
 
 ### 3.4 快照策略
@@ -163,10 +171,12 @@
 3. "测试"（简单主题）
 
 ### 预期结果
-- 单轮：EI = 动态计算值（15-30）
+- 单轮：EI = 动态计算值（15-40）
 - 2 轮：连续执行完成
-- 涌现：连续 2 轮 EI ≥ 15 自动终止
+- 涌现：**连续 2 轮 EI ≥ 30** 自动终止
 - 解析失败：保留 raw_content，不返回 [Error]
+- Worker 产出：至少 200 字（Prompt 要求）
+- 报告产出：显示完整 200 字符
 
 ---
 
