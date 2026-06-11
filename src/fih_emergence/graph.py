@@ -162,6 +162,27 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             if new_facts:
                 state["facts"] = existing_facts + new_facts
                 print(f"[INFO] 新增 {len(new_facts)} 条 Fact 到黑板")
+        
+        # === 将 hint_candidates 写入黑板 ===
+        hint_cands = result.get("hint_candidates", [])
+        if hint_cands:
+            existing_hints = state.get("hints", [])
+            existing_hint_contents = {h.get("content", "") for h in existing_hints}
+            
+            new_hints = []
+            for hc in hint_cands:
+                content = hc.get("content", "")
+                if content and content not in existing_hint_contents:
+                    new_hints.append({
+                        "content": content,
+                        "source": hc.get("source", "insight"),
+                        "status": "candidate",
+                        "round": state.get("current_round", 1),
+                    })
+            
+            if new_hints:
+                state["hints"] = existing_hints + new_hints
+                print(f"[INFO] 新增 {len(new_hints)} 条 Hint 到黑板")
     else:
         result = {}
     

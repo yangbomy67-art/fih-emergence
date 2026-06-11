@@ -194,9 +194,10 @@ C. 跨路径一致性：以不同 Intent 重新推演是否收敛？
 D. 可传递性：能否作为新任务起点？
 
 ## 输出要求
-直接输出 JSON，不要任何思考过程。格式示例：{"passed": true, "scores_4d": {"A": 8, "B": 7, "C": 6, "D": 9}, "result_ei": 30, "fact_candidates": [{"content": "当前黑板缺乏系统日志", "source": "insight"}], "valley_detected": false}
+直接输出 JSON，不要任何思考过程。格式示例：
+{"passed": true, "scores_4d": {"A": 8, "B": 7, "C": 6, "D": 9}, "result_ei": 30, "fact_candidates": [{"content": "当前黑板缺乏系统日志", "source": "insight"}], "hint_candidates": [{"content": "新线索", "source": "insight"}], "valley_detected": false}
 
-注意：必须提取至少1条 fact_candidates！
+注意：必须提取至少1条 fact_candidates 和 1 条 hint_candidates！
 """
 
 AUDITOR_VALLEY_CHECK = """检测低谷：
