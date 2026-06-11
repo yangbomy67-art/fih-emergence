@@ -232,7 +232,7 @@ ON human_intervention_log(session_id, round);
 |------|------|----------|----------|
 | `idle` | 空闲，等待任务 | 系统启动 / 任务终止后 | 收到 `/start` 请求 |
 | `running` | 执行中 | `/start` 成功 / `interrupt` 恢复后 | 触发 `interrupt` / 任务完成 |
-| `interrupted` | 等待人工介入 | 4 条件满足触发 `interrupt` | 用户响应 / 超时 5min |
+| `interrupted` | 等待人工介入 | 3 条件满足触发 `interrupt` | 用户响应 / 超时 5min |
 | `completed` | 任务完成 | 达到终止条件且 Manager 确认 | - |
 | `aborted` | 任务中止 | 用户执行 `/stop` / 不可恢复错误 | - |
 
@@ -241,7 +241,7 @@ ON human_intervention_log(session_id, round);
 | 迁移 | 触发条件 | 重置/更新的字段 |
 |------|----------|-----------------|
 | idle → running | `/start` | `current_round=1`, `task_complete=false`, `is_first_round=true`, `task_boundary_status="open"` |
-| running → interrupted | 4条件触发 | `needs_human=true`, `human_intervention_reason` 设为具体原因 |
+| running → interrupted | 3条件触发 | `needs_human=true`, `human_intervention_reason` 设为具体原因 |
 | interrupted → running (resume) | 用户响应 `/interrupt` | `needs_human=false`, `human_action_taken` 设为用户操作 |
 | interrupted → running (timeout) | 超时 5min | 见 SPEC_保护机制.md §超时后的行为定义 |
 | running → completed | 终止条件满足 | `task_complete=true`, `task_boundary_status="closed"`, `final_output` 设为整合产出 |

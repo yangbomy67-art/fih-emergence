@@ -24,12 +24,11 @@ Human Gate (CLI/Skill)  ←HTTP/WSS→  FIH Backend Service
 | POST | `/interrupt` | 人工介入操作 |
 | POST | `/rollback/{n}` | 回退到第 N 轮 |
 
-### 4 条件推送
+### 3 条件推送
 
 | 方法 | 端点 | 说明 |
 |------|------|------|
-| WS | `/ws/events` | WebSocket 长连接，接收 4 条件推送 |
-
+| WS | `/ws/events` | WebSocket 长连接，接收 3 条件推送 |
 ### 健康检查
 
 | 方法 | 端点 | 说明 |
@@ -91,7 +90,7 @@ Human Gate (CLI/Skill)  ←HTTP/WSS→  FIH Backend Service
 ### WebSocket 消息
 
 ```json
-// Server → Client (4 条件触发)
+// Server → Client (3 条件触发)
 {
   "type": "interrupt_triggered",
   "condition": "confidence_anomaly",

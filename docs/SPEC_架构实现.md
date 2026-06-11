@@ -66,14 +66,14 @@
 | 组件 | 职责 |
 |------|------|
 | **HTTP API** | 接收 Human Gate 请求，转发至 LangGraph 状态管理器 |
-| **WebSocket** | 维护与 Human Gate 的长连接，推送 4 条件触发事件 |
+| **WebSocket** | 维护与 Human Gate 的长连接，推送 3 条件触发事件 |
 | **State Manager** | 管理 LangGraph 工作流状态，处理 interrupt/resume |
 
 ### 2. LangGraph 工作流
 
 采用 `langgraph.types.interrupt()` 实现暂停机制：
 
-- **流程内暂停**：当 4 条件触发时，LangGraph 调用 `interrupt()` 暂停工作流
+- **流程内暂停**：当 3 条件触发时，LangGraph 调用 `interrupt()` 暂停工作流
 - **状态保存**：暂停时当前状态已保存在 SQLite checkpoint 中
 - **外部通信**：WebSocket 向 Human Gate 推送暂停事件
 - **恢复执行**：Human Gate 通过 `/interrupt` 发送操作指令，State Manager 调用 `graph.invoke(resume=...)` 恢复
@@ -100,9 +100,9 @@
 
 ## 事件机制
 
-### 4 条件触发 → WebSocket 推送
+### 3 条件触发 → WebSocket 推送
 
-LangGraph 节点内部检测到 4 条件时：
+LangGraph 节点内部检测到 3 条件时：
 
 1. **先推送**：State Manager 通过 WebSocket 向 Human Gate 推送中断事件
 2. **推送成功** → LangGraph 调用 `interrupt()` 暂停工作流
@@ -111,7 +111,7 @@ LangGraph 节点内部检测到 4 条件时：
 ### 时序保证
 
 ```
-节点检测 4 条件
+节点检测 3 条件
        ↓
 WebSocket 推送 (interrupt_triggered)
        ↓
@@ -130,7 +130,7 @@ State Manager 捕获 interrupt
 
 | 事件名 | 触发时机 | 推送内容 |
 |--------|----------|----------|
-| `interrupt_triggered` | 4 条件满足 | condition, context, current_round |
+| `interrupt_triggered` | 3 条件满足 | condition, context, current_round |
 | `round_completed` | 轮次结束 | round, proposal, result_ei |
 | `task_completed` | 任务完成 | final_output, round_count |
 | `task_error` | 异常发生 | error_message, round |
@@ -142,7 +142,7 @@ State Manager 捕获 interrupt
 ```
 LangGraph 节点
       ↓
-检测到 4 条件 → interrupt({"condition": "xxx", ...})
+检测到 3 条件 → interrupt({"condition": "xxx", ...})
       ↓
 State Manager 捕获
       ↓

@@ -97,10 +97,10 @@ Manager 汇总裁决：
       └─ 终止任务（触发 force_complete 流程）
 ```
 
-### 异常 D: 4 条件触发中断
+### 异常 D: 3 条件触发中断
 
 ```
-Manager 检测到 4 条件满足
+Manager 检测到 3 条件满足
        ↓
 触发 human_gate_interrupt
        ↓

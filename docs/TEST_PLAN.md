@@ -30,7 +30,7 @@
 - [ ] Auditor 事前打回 → Proposer 重试
 - [ ] retry 耗尽 → null round
 - [ ] Worker 产出异常 → Manager 裁决
-- [ ] 4 条件触发中断 → Human Gate 介入
+- [ ] 3 条件触发中断 → Human Gate 介入
 
 ---
 
