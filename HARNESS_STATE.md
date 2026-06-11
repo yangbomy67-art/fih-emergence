@@ -21,9 +21,10 @@ phase: integration-inventory
 | 2026-06-11 | prompt-align | 10个Prompt已对齐 |
 | 2026-06-11 | single-role | Proposer/Worker/Auditor 联调通过 |
 | 2026-06-11 | single-round | 单轮完整流程通过 |
+| 2026-06-11 | multi-round | 2轮运行(涌现终止), Facts=0待修复 |
 
 ---
 
 ## Next
 
-Phase 5: 多 Round 联调
+Phase 6: 保护机制/异常路径
