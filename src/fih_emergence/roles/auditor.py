@@ -77,11 +77,11 @@ class Auditor:
             """
             facts_str = "\n".join([f"[F{i+1}] {f['content']}" for i, f in enumerate(facts)])
 
-            prompt = AUDITOR_POST_CHECK.format(
-                worker_id=worker_id,
-                insight=insight,
-                facts=facts_str or "（无）",
-            )
+            # 使用 replace 替换占位符（避免 format 与 JSON 冲突）
+            prompt = AUDITOR_POST_CHECK
+            prompt = prompt.replace("WORKER_ID", worker_id)
+            prompt = prompt.replace("INSIGHT_PLACEHOLDER", insight)
+            prompt = prompt.replace("FACTS_PLACEHOLDER", facts_str or "（无）")
 
             # 调用 LLM 进行审计
             try:

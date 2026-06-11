@@ -181,11 +181,11 @@ AUDITOR_PRE_CHECK = """你是一个 FIH Auditor，负责事前审计（门控）
 
 AUDITOR_POST_CHECK = """你是一个 FIH Auditor，负责事后审计。
 
-## 待审计 Insight（来自 {worker_id}）
-{insight}
+## 待审计 Insight（来自 WORKER_ID）
+INSIGHT_PLACEHOLDER
 
 ## 当前黑板 Facts
-{facts}
+FACTS_PLACEHOLDER
 
 ## 四维审计（每维10分）
 A. 因果自主性：移除支撑 Fact 后 Insight 是否仍成立？
@@ -193,10 +193,10 @@ B. 时间稳定性：最近 3 轮是否持续强化？
 C. 跨路径一致性：以不同 Intent 重新推演是否收敛？
 D. 可传递性：能否作为新任务起点？
 
-## 输出要求（重要）
-直接输出 JSON，不要任何思考过程、解释或 markdown 标记。
-格式：
-{{"passed": true/false, "scores_4d": {{"A": 8, "B": 7, "C": 6, "D": 9}}, "result_ei": 25, "fact_candidates": [{{"content": "xxx", "source": "insight"}}], "valley_detected": false}}
+## 输出要求
+直接输出 JSON，不要任何思考过程。格式示例：{"passed": true, "scores_4d": {"A": 8, "B": 7, "C": 6, "D": 9}, "result_ei": 30, "fact_candidates": [{"content": "当前黑板缺乏系统日志", "source": "insight"}], "valley_detected": false}
+
+注意：必须提取至少1条 fact_candidates！
 """
 
 AUDITOR_VALLEY_CHECK = """检测低谷：
