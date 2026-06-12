@@ -1,12 +1,13 @@
 # INTEGRATION_GAP_MATRIX.md
 
 ## Severity: Blocker (必须先修，否则流程不通)
-- [ ] M1: Manager 确认 Intent 节点缺失 (Logic L1)
-- [ ] M2: Manager 汇总裁决节点缺失 (Logic L1)
-- [ ] D1: next_intent_suggestions 字段缺失 (Data D1)
+- [x] M1: Manager 确认 Intent 节点缺失 (Logic L1) ✅ Sprint1
+- [x] M2: Manager 汇总裁决节点缺失 (Logic L1) ✅ Sprint1
+- [x] D1: next_intent_suggestions 字段缺失 (Data D1) ✅ Sprint1
+- [x] L6.1: Proposer 读取 Next Intent 建议 ✅ Sprint2
 
 ## Severity: Major (严重漂移，必须对齐)
-- [ ] A1: EI 阈值 15 vs 30 不一致 (Logic L4)
+- [x] A1: EI 阈值 15 vs 30 不一致 (Logic L4) ✅ 已修复
 - [ ] A2: Auditor 越权写入 Fact (Logic L5)
 - [ ] A3: 终止条件判定逻辑错误 (Logic L2)
 
