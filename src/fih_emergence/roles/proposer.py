@@ -10,7 +10,7 @@ Responsibilities:
 """
 
 from fih_emergence.llm import BaseLLMClient, get_proposer_client
-from fih_emergence.prompts import PROPOSER_GENERATE, PROPOSER_SUPPLEMENT
+from fih_emergence.prompts import PROPOSER_GENERATE, PROPOSER_SUPPLEMENT, PROPOSER_DIVERSIFY
 from fih_emergence.state import FIHState
 
 
@@ -20,9 +20,13 @@ class Proposer:
     def __init__(self, llm_client: BaseLLMClient = None):
         self.llm_client = llm_client or get_proposer_client()
 
-    async def generate_intents(self, state: FIHState) -> dict:
+    async def generate_intents(self, state: FIHState, diversify: bool = False) -> dict:
         """
         生成候选 Intent
+
+        Args:
+            state: 当前状态
+            diversify: 是否启用多样化模式（EI 持续低时为 True）
 
         Returns:
             {"intents": [...], "prompt": "..."}
@@ -37,11 +41,19 @@ class Proposer:
         # L6.1: 读取上一轮的 Next Intent 建议
         suggestions_str = "\n".join([f"- {s}" for s in next_suggestions]) if next_suggestions else "（无）"
 
-        prompt = PROPOSER_GENERATE.format(
-            facts=facts_str,
-            hints=hints_str,
-            next_intent_suggestions=suggestions_str,
-        )
+        # 根据 diversify 标志选择不同 prompt
+        if diversify:
+            prompt = PROPOSER_DIVERSIFY.format(
+                facts=facts_str,
+                hints=hints_str,
+                next_intent_suggestions=suggestions_str,
+            )
+        else:
+            prompt = PROPOSER_GENERATE.format(
+                facts=facts_str,
+                hints=hints_str,
+                next_intent_suggestions=suggestions_str,
+            )
 
         # 调用 LLM
         response = await self.llm_client.complete(prompt)

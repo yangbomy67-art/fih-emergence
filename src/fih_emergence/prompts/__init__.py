@@ -104,6 +104,31 @@ Manager 判定当前候选存在缺失：
 请补充生成候选 Intent：
 """
 
+# =======================
+# 多样化 Intent Prompts (diversify_intent)
+# =======================
+
+PROPOSER_DIVERSIFY = """你是一个 FIH Proposer，需要生成多样化的 Intent 来突破当前低谷。
+
+## 当前困境
+EI（Emergent Intelligence）持续 3+ 轮低于 10，系统产出质量下降，需要探索新方向。
+
+## 上一轮 Next Intent 建议
+__NEXT_INTENT_SUGGESTIONS__
+
+## 多样化策略要求
+请生成与之前**不同类型**的 Intent，突破当前思维定式：
+1. **角度转换**：从不同行业、不同主体、不同时间尺度思考
+2. **逆向思维**：尝试否定当前假设，寻找反向证据
+3. **跨界融合**：将其他领域的概念、方法论引入当前问题
+4. **极端假设**：探索边界条件、极限情况
+
+## 输出格式
+直接输出 JSON 数组，不要 markdown 标记。
+
+"""
+PROPOSER_DIVERSIFY = PROPOSER_DIVERSIFY.replace("__NEXT_INTENT_SUGGESTIONS__", "{next_intent_suggestions}")
+
 
 # =======================
 # Worker Prompts

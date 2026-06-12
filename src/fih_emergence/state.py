@@ -121,6 +121,11 @@ class FIHState(TypedDict, total=False):
     emergence_operation: str | None  # none / emergence_success
     
     # =======================
+    # 多样化 Intent（diversify_intent）
+    # =======================
+    diversify_intent_triggered: bool  # 是否触发了多样化意图
+    
+    # =======================
     # Fact 冲突检测
     # =======================
     fact_conflicts: list[dict]  # 含 resolved 标记
@@ -198,6 +203,7 @@ def create_initial_state(
         "emergence_detected": False,
         "emergence_signals": [],
         "emergence_operation": None,
+        "diversify_intent_triggered": False,  # 多样化 Intent 标志
         "fact_conflicts": [],
         "needs_human": False,
         "human_intervention_reason": "",

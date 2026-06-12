@@ -1,5 +1,37 @@
 # CHANGELOG.md
 
+## v1.0.2 (2026-06-12)
+
+### feat: diversify_intent 多样化 Intent 实现
+
+当 EI 持续低（3+ 轮 <10）时，系统自动触发多样化策略，引导 Proposer 突破思维定式。
+
+#### 实现细节
+- **state.py**: 新增 `diversify_intent_triggered` 字段
+- **prompts/__init__.py**: 新增 `PROPOSER_DIVERSIFY` prompt，包含4种多样化策略（角度转换/逆向思维/跨界融合/极端假设）
+- **proposer.py**: `generate_intents()` 方法新增 `diversify` 参数
+- **graph.py**: 检测到 `valley_operation == "diversify_intent"` 时设置标志，传递给下一轮 Proposer
+
+#### Trace
+
+```
+[ROLE]      builder
+[BASIS]     第一期悬置功能：diversify_intent
+[SCOPE]     4 files modified
+[DECISION]  graph 检测 EI 持续低 → 设置 diversify_intent_triggered → Proposer 使用多样化 prompt
+```
+
+#### Files Changed
+
+| 文件 | 变更 |
+|------|------|
+| state.py | 新增 diversify_intent_triggered 字段 |
+| prompts/__init__.py | 新增 PROPOSER_DIVERSIFY |
+| proposer.py | generate_intents() 支持 diversify 参数 |
+| graph.py | valley_operation==diversify_intent 时触发 |
+
+---
+
 ## v1.0.1 (2026-06-09)
 
 ### fix: SPEC Review 问题修复

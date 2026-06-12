@@ -77,7 +77,11 @@ def node_manager_start(state: FIHState) -> FIHState:
 async def node_proposer_generate(state: FIHState) -> FIHState:
     """Proposer: 生成 Intent"""
     proposer = get_proposer()
-    result = await proposer.generate_intents(state)
+    
+    # 检查是否需要多样化模式（diversify_intent）
+    diversify = state.get("diversify_intent_triggered", False)
+    
+    result = await proposer.generate_intents(state, diversify=diversify)
     state["intents"] = result.get("intents", [])
     return state
 
@@ -605,9 +609,14 @@ async def run_session(
             logger.info("  → 检测到产出停滞，尝试低谷穿越（继续下一轮）")
             # 继续下一轮，让 Proposer 生成多样化 Intent
         
-        # 低谷穿越：EI 持续低，尝试多���化（继续下一轮）
+        # 低谷穿越：EI 持续低，尝试多样化（继续下一轮）
         if valley_detected and valley_operation == "diversify_intent":
             logger.info("  → 检测到 EI 持续低，尝试低谷穿越（继续）")
+            # 设置多样化标志，传递给下一轮的 Proposer
+            state["diversify_intent_triggered"] = True
+        else:
+            # 重置多样化标志
+            state["diversify_intent_triggered"] = False
         
         # === 弱势方重产处理 ===
         need_rebuttal = state.get("need_rebuttal", False)
