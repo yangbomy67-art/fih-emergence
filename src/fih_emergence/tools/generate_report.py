@@ -84,8 +84,8 @@ def generate_report_from_history(
                 intent_content = parsed.get('intent', parsed.get('content', raw_intent))
             except:
                 intent_content = raw_intent
-            # 清理换行符和多余空白
-            intent_content = ' '.join(intent_content.split())[:200]
+            # 清理换行符和多余空白，Intent显示更长
+            intent_content = ' '.join(intent_content.split())[:400]
         
         # Worker 产出（完整内容，80字符）
         worker_a = "无"
@@ -107,7 +107,7 @@ def generate_report_from_history(
                         content0 = parsed.get('insight', content0)
                 except:
                     pass
-                worker_a = content0[:200]
+                worker_a = content0[:500]
                 conf_a = f"{w0.get('confidence', w0.get('self_confidence', 0)):.0f}%"
             
             # Worker B (反方/worker_n)
@@ -122,7 +122,7 @@ def generate_report_from_history(
                         content1 = parsed.get('insight', content1)
                 except:
                     pass
-                worker_b = content1[:200]
+                worker_b = content1[:500]
                 conf_b = f"{w1.get('confidence', w1.get('self_confidence', 0)):.0f}%"
             
             # 计算胜出方（比较confidence）
@@ -138,7 +138,7 @@ def generate_report_from_history(
             except:
                 winner = "-"
         
-        md += f"| {round_num} | {intent_content}... | - | {worker_a}... ({conf_a}) | {worker_b}... ({conf_b}) | {winner} | {ei:.1f} |\n"
+        md += f"| {round_num} | {intent_content} | - | {worker_a} ({conf_a}) | {worker_b} ({conf_b}) | {winner} | {ei:.1f} |\n"
     
     md += """
 ---
@@ -150,27 +150,30 @@ def generate_report_from_history(
     # 动态生成核心洞察（按SPEC规则）
     if rounds_history and facts:
         # 获取第一轮的事实和意图
-        first_round = rounds_history[0]
-        first_intent = ""
-        if first_round.get("intents"):
-            first_intent = first_round["intents"][0].get("content", "")[:40]
+                first_round = rounds_history[0]
+                first_intent = ""
+                if first_round.get("intents"):
+                    first_intent = first_round["intents"][0].get("content", "")[:100]
         
-        # 获取所有Facts内容
-        fact_contents = [f.get("content", "") for f in facts[:3]]
+                # 获取所有Facts内容
+                fact_contents = [f.get("content", "") for f in facts[:3]]
         
-        # 获取Hints内容
-        hint_contents = [h.get("content", "") for h in hints[:2]] if hints else []
+                # 获取Hints内容
+                hint_contents = [h.get("content", "") for h in hints[:2]] if hints else []
+
+                # 构建核心洞察（遵循SPEC规则，不截断）
+                first_fact = fact_contents[0][:200] if fact_contents else '系统初步分析'
+                first_hint = hint_contents[0][:200] if hint_contents else '新的分析维度'
         
-        # 构建核心洞察（遵循SPEC规则）
-        md += f"""
-基于对该命题的深入分析，我们从两个核心发现出发：{fact_contents[0] if fact_contents else '系统初步分析'}。
+                md += f"""
+        基于对该命题的深入分析，我们从两个核心发现出发：{first_fact}。
 
-在"{first_intent}..."这一意图的引导下，系统从两个方向展开分析：一是从正向角度探讨可能性，二是从反向角度审视潜在风险。两个方向的碰撞形成张力，��终推动认知的深化。
+        在"{first_intent}"这一意图的引导下，系统从两个方向展开分析：一是从正向角度探讨可能性，二是从反向角度审视潜在风险。两个方向的碰撞形成张力，最终推动认知的深化。
 
-随着分析深入，系统将关注点转向{hint_contents[0] if hint_contents else '新的分析维度'}。此时，正向与反向的博弈进入新阶段——不再是简单的方向选择，而是寻求两种视角的融合。
+        随着分析深入，系统将关注点转向{first_hint}。此时，正向与反向的���弈进入新阶段——不再是简单的方向选择，而是寻求两种视角的融合。
 
-系统通过引入新的分析维度，为这个问题提供了更加全面的认知框架。整体分析表明，问题的复杂性需要多角度的审视，而正是这种多维度的思考方式，推动了洞察的涌现。
-"""
+        系统通过引入新的分析维度，为这个问题提供了更加全面的认知框架。整体分析表明，问题的复杂性需要多角度的审视，而正是这种多维度的思考方式，推动了洞察的涌现。
+        """
     else:
         # 无数据时的默认输出
         md += """
