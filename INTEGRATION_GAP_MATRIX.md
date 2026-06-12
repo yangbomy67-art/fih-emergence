@@ -9,7 +9,7 @@
 ## Severity: Major (严重漂移，必须对齐)
 - [x] A1: EI 阈值 15 vs 30 不一致 (Logic L4) ✅ 已修复
 - [x] A2: Auditor 越权写入 Fact (Logic L5) ✅ Sprint3
-- [ ] A3: 终止条件判定逻辑错误 (Logic L2)
+- [x] A3: 终止条件判定逻辑错误 (Logic L2) ✅ Sprint4
 
 ## Severity: Minor (代码坏味道/死代码)
 - [ ] N1: detect_valley / check_valley 死代码清理

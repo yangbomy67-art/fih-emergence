@@ -123,15 +123,7 @@ class Manager:
         if state["current_round"] >= state["max_iterations"]:
             return "COMPLETE"
 
-        # 条件2: 置信度聚合 > 85%
-        if audit_result and "scores_4d" in audit_result:
-            scores = audit_result["scores_4d"]
-            total = sum(scores.values())
-            confidence_agg = (total / (4 * 10)) * 100
-            if confidence_agg > 85:
-                return "COMPLETE"
-
-        # 条件3: task_complete 由外部设置（force_complete）
+        # 条件2: task_complete 由外部设置（force_complete / 涌现成功）
 
         return "CONTINUE"
 

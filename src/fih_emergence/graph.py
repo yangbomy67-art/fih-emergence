@@ -308,16 +308,26 @@ async def node_auditor_post(state: FIHState) -> FIHState:
     ei_score = result.get("result_ei", 0) if submissions else 0
     state["ei_score"] = ei_score  # 保存到 state
     
-    # 更新低谷信号
+    # === A3 修复: 分离 valley_signals 和 emergence_signals ===
+    
+    # 更新低谷信号 (用于产出停滞检测)
     valley_signals = state.get("valley_signals", [])
     valley_signals.append({
         "round": current_round,
         "has_new_fact": has_new_fact,
         "ei_score": ei_score,
     })
-    # 保留最近 5 轮
-    valley_signals = valley_signals[-5:]
+    valley_signals = valley_signals[-5:]  # 保留最近 5 轮
     state["valley_signals"] = valley_signals
+    
+    # 更新涌现信号 (用于连续2轮EI>=30检测)
+    emergence_signals = state.get("emergence_signals", [])
+    emergence_signals.append({
+        "round": current_round,
+        "ei_score": ei_score,
+    })
+    emergence_signals = emergence_signals[-5:]  # 保留最近 5 轮
+    state["emergence_signals"] = emergence_signals
     
     # 计算连续无新 Fact 轮次
     no_fact_rounds = 0
@@ -400,14 +410,17 @@ async def node_auditor_post(state: FIHState) -> FIHState:
             # EI 持续低，尝试多样化
             valley_operation = "diversify_intent"
     
-    # === 涌现成功检测 ===
+    # === 涌现成功检测 (A3修复: 使用独立的 emergence_signals) ===
     # 连续 2 轮 EI >= 30 → 任务完成（强因果涌现）
     emergence_detected = False
     emergence_operation = "none"
     
-    if ei_score >= 30 and len(valley_signals) >= 2:
+    # 使用独立的 emergence_signals 而非复用 valley_signals
+    emergence_signals = state.get("emergence_signals", [])
+    
+    if ei_score >= 30 and len(emergence_signals) >= 2:
         # 检查前一轮是否也 >= 30
-        prev_ei = valley_signals[-2].get("ei_score", 0) if len(valley_signals) >= 2 else 0
+        prev_ei = emergence_signals[-2].get("ei_score", 0) if len(emergence_signals) >= 2 else 0
         if prev_ei >= 30:
             emergence_detected = True
             emergence_operation = "emergence_success"
