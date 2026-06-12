@@ -80,6 +80,9 @@ PROPOSER_GENERATE = """你是一个 FIH Proposer，负责生成候选 Intent。
 Facts: __FACTS__
 Hints: __HINTS__
 
+## 上一轮 Next Intent 建议（参考方向）
+__NEXT_INTENT_SUGGESTIONS__
+
 ## 任务要求
 生成 2-4 个候选 Intent，必须包含以下三类：
 1. 待验证：有明确预期产出，可被证伪
@@ -90,7 +93,7 @@ Hints: __HINTS__
 直接输出 JSON 数组，不要 markdown 标记。
 
 """
-PROPOSER_GENERATE = PROPOSER_GENERATE.replace("__FACTS__", "{facts}").replace("__HINTS__", "{hints}")
+PROPOSER_GENERATE = PROPOSER_GENERATE.replace("__FACTS__", "{facts}").replace("__HINTS__", "{hints}").replace("__NEXT_INTENT_SUGGESTIONS__", "{next_intent_suggestions}")
 
 PROPOSER_SUPPLEMENT = """Proposer 补充生成
 

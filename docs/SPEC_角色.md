@@ -68,10 +68,10 @@ Manager 是系统日常执行者，Human Gate 是上级/导师角色。大部分
 |------|------|------|
 | **Facts** | 黑板读取 | ✅ 已实现 |
 | **Hints** | 黑板读取 | ✅ 已实现 |
-| **上一轮 Next Intent 建议** | Manager 填写，Proposer 读取 | ⚠️ 待实现（需要 Manager 写入 + Proposer 读取） |
+| **上一轮 Next Intent 建议** | Manager 填写，Proposer 读取 | ✅ 已实现 |
 | **task_description** | 任务主题（数据库/内存） | ✅ 已实现 |
 
-> **待实现**：当前代码中 Manager 填写 Next Intent 建议后未持久化供 Proposer 读取，需要新增字段并实现读写逻辑。
+> **已实现**：Sprint1 添加 `next_intent_suggestions` 字段，manager_confirm 节点写入，proposer 节点读取并传入 prompt。
 
 ### 不承担
 

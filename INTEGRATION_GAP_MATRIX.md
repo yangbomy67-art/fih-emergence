@@ -25,6 +25,8 @@
 - [x] D1: state.py 新增 `next_intent_suggestions` 和 `intent_confirmed` 字段
 - [x] Graph 拓扑更新：manager → proposer → **manager_confirm** → auditor_pre → worker_p → worker_n → auditor_post → **manager_summarize** → END
 - [x] TEST: D1字段存在/初始值为空, M1节点存在, M2节点存在
+- [x] **L6.1**: Proposer 读取 Next Intent 建议（proposer.py + prompts/__init__.py + SPEC_角色.md + SPEC_流程.md）
+- [x] 文档更新: SPEC_角色.md 输入表标记✅, SPEC_流程.md 新增节点对应关系表
 
-**Commit**: `f2c8a3d`
+**Commit**: `13e76a2`
 

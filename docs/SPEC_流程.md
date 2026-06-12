@@ -11,11 +11,11 @@
 → ① 黑板初始化
 → ② Manager 发布主题（来自 Human Gate）
 → ③ Proposer 多草稿生成
-→ ④ Manager 确认 Intent (三要素)
+→ ④ Manager 确认 Intent (三要素)           [node_manager_confirm_intent ✅]
 → ⑤ Auditor 事前审计 (Intent → Worker 门槛)
 → ⑥ 双 Worker GAN 对抗 (每个 Intent 独立执行)
 → ⑦ Auditor 事后审计 (Insight → 黑板 门槛)
-→ ⑧ Manager 汇总裁决
+→ ⑧ Manager 汇总裁决                       [node_manager_summarize ✅]
 → ⑨ Manager 判断：触发 human_gate_interrupt?
        是 → 全图暂停 → Human Gate 与 Manager 通信
           → 人工操作 → 指令返回 Manager
@@ -30,6 +30,20 @@
 【终止后】
   回到空闲状态（等待 Human Gate 下一轮任务）
 ```
+
+## Graph 节点对应关系
+
+| 步骤 | 节点名称 | 实现状态 |
+|------|----------|----------|
+| ① | create_initial_state | ✅ |
+| ② | node_manager_start | ✅ |
+| ③ | node_proposer_generate | ✅ |
+| ④ | **node_manager_confirm_intent** | ✅ Sprint1 |
+| ⑤ | node_auditor_pre | ✅ |
+| ⑥ | node_worker_p + node_worker_n | ✅ |
+| ⑦ | node_auditor_post | ✅ |
+| ⑧ | **node_manager_summarize** | ✅ Sprint1 |
+| ⑨ | run_session 循环中断检测 | ✅ |
 
 ## 数据流
 

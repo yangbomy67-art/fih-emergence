@@ -29,13 +29,18 @@ class Proposer:
         """
         facts = state.get("facts", [])
         hints = state.get("hints", [])
+        next_suggestions = state.get("next_intent_suggestions", [])
 
         facts_str = "\n".join([f"- {f['content']}" for f in facts]) or "（无）"
         hints_str = "\n".join([f"- {h['content']}" for h in hints]) or "（无）"
+        
+        # L6.1: 读取上一轮的 Next Intent 建议
+        suggestions_str = "\n".join([f"- {s}" for s in next_suggestions]) if next_suggestions else "（无）"
 
         prompt = PROPOSER_GENERATE.format(
             facts=facts_str,
             hints=hints_str,
+            next_intent_suggestions=suggestions_str,
         )
 
         # 调用 LLM
