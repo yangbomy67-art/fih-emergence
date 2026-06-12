@@ -1,5 +1,48 @@
 # CHANGELOG.md
 
+## v1.0.3 (2026-06-12)
+
+### feat: 网络搜索功能（方案C - Auditor守门员模式）
+
+当 Auditor 审核 Worker 产出时，判断是否需要搜索获取实时信息，搜索结果作为 Hint 注入黑板。
+
+#### 实现细节
+- **tools/network_search.py**: 新增 NetworkSearchTool（DuckDuckGo + Jina Reader）
+- **config.py**: 新增 NetworkSearchConfig 配置类
+- **roles/auditor.py**: 集成搜索能力，needs_search_verification() / search_and_format_hints()
+- **graph.py**: node_auditor_post 中调用网络搜索
+
+#### 数据流
+```
+Worker 推理 → Auditor 审核 → 需要搜索? → 执行搜索 → 新Hint写入黑板
+                                                   ↓
+下一轮 Worker 推理时读取搜索Hint → 产出含实时信息的insight
+```
+
+#### 方案说明
+- **方案C**: 仅 Auditor 可触发搜索（守门员模式）
+- **免费方案**: DuckDuckGo 搜索 + Jina Reader 内容提取 = $0/月
+
+#### Trace
+
+```
+[ROLE]      builder
+[BASIS]     第二期开发 - 网络搜索功能 SPEC
+[SCOPE]     4 files modified
+[DECISION]  方案C: Auditor守门员模式，DuckDuckGo+Jina免费方案
+```
+
+#### Files Changed
+
+| 文件 | 变更 |
+|------|------|
+| tools/network_search.py | 新增 NetworkSearchTool 类 |
+| config.py | 新增 NetworkSearchConfig |
+| roles/auditor.py | 集成网络搜索能力 |
+| graph.py | Auditor审核时触发搜索 |
+
+---
+
 ## v1.0.2 (2026-06-12)
 
 ### feat: diversify_intent 多样化 Intent 实现

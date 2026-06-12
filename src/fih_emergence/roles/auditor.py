@@ -7,13 +7,27 @@ Responsibilities:
 1. 事前审计 (Intent → Worker 门槛)：EI 启发式评估（门控）
 2. 事后审计 (Insight → 黑板 门槛)：EI 追踪 + Fact+候选 + Hint+候选 + 快照策略 + 四维审计 + 低谷识别
 3. 检测 3 条件并通知 Manager
+4. **网络搜索验证**：审核时判断是否需要搜索获取实时信息
 """
 
+import logging
+
+from fih_emergence.config import get_config
 from fih_emergence.llm import BaseLLMClient, get_auditor_client
 from fih_emergence.prompts import (
     AUDITOR_POST_CHECK,
     AUDITOR_PRE_CHECK,
 )
+
+logger = logging.getLogger("fih.auditor")
+
+# 导入网络搜索工具
+try:
+    from fih_emergence.tools.network_search import NetworkSearchTool
+    NETWORK_SEARCH_AVAILABLE = True
+except ImportError:
+    NETWORK_SEARCH_AVAILABLE = False
+    logger.warning("NetworkSearchTool 不可用，网络搜索功能禁用")
 
 
 class Auditor:
@@ -21,6 +35,20 @@ class Auditor:
 
     def __init__(self, llm_client: BaseLLMClient = None):
         self.llm_client = llm_client or get_auditor_client()
+        
+        # 初始化网络搜索工具
+        self.search_tool = None
+        if NETWORK_SEARCH_AVAILABLE:
+            try:
+                config = get_config()
+                if config.network_search.enabled:
+                    self.search_tool = NetworkSearchTool(
+                        max_results=config.network_search.max_results,
+                        timeout=config.network_search.timeout,
+                    )
+                    logger.info("Auditor 网络搜索工具已初始化")
+            except Exception as e:
+                logger.warning(f"网络搜索工具初始化失败: {e}")
 
     async def pre_audit_intent(
         self,
@@ -240,3 +268,64 @@ class Auditor:
             return True, "n_dominant"
 
         return False, ""
+
+    # =======================
+    # 网络搜索相关方法
+    # =======================
+
+    def needs_search_verification(self, insight: str) -> tuple[bool, list[str]]:
+        """
+        判断 Insight 是否需要搜索验证
+
+        Args:
+            insight: Worker 产出
+
+        Returns:
+            (是否需要搜索, 搜索关键词列表)
+        """
+        if not self.search_tool:
+            return False, []
+
+        # 检查是否包含需要实时信息的关键词
+        if self.search_tool.needs_search(insight):
+            # 提取搜索关键词
+            queries = self.search_tool.extract_search_queries(insight)
+            if queries:
+                logger.info(f"检测到需要搜索验证的内容，关键词: {queries}")
+                return True, queries
+
+        return False, []
+
+    async def search_and_format_hints(
+        self,
+        queries: list[str],
+    ) -> list[dict]:
+        """
+        执行搜索并将结果���式化为 Hint
+
+        Args:
+            queries: 搜索关键词列表
+
+        Returns:
+            Hint 列表（供写入黑板）
+        """
+        if not self.search_tool or not queries:
+            return []
+
+        hints = []
+        for query in queries:
+            try:
+                results = await self.search_tool.search(query)
+                for r in results:
+                    hints.append({
+                        "content": f"[搜索:{query}] {r.title}: {r.content[:200]}",
+                        "source": "network_search",
+                        "url": r.url,
+                        "status": "candidate",
+                        "search_query": query,
+                    })
+                logger.info(f"搜索 '{query}' 获取 {len(results)} 条结果")
+            except Exception as e:
+                logger.error(f"搜索 '{query}' 失败: {e}")
+
+        return hints

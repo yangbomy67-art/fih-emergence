@@ -281,6 +281,27 @@ async def node_auditor_post(state: FIHState) -> FIHState:
         )
         state["audit_result"] = result
         
+        # === NS: 网络搜索验证 ===
+        # 检查 Worker 产出是否需要搜索验证
+        if submissions:
+            first_insight = submissions[0].get("insight", "")
+            need_search, search_queries = auditor.needs_search_verification(first_insight)
+            
+            if need_search and search_queries:
+                logger.info(f"[Auditor] 需要搜索验证，关键词: {search_queries}")
+                # 执行搜索
+                search_hints = await auditor.search_and_format_hints(search_queries)
+                if search_hints:
+                    # 写入黑板作为 Hint（下一轮生效）
+                    existing_hints = state.get("hints", [])
+                    state["hints"] = existing_hints + search_hints
+                    logger.info(f"[Auditor] 已添加 {len(search_hints)} 条搜索结果到黑板")
+                    
+                    # 标记搜索已执行（用于审计结果）
+                    result["search_performed"] = True
+                    result["search_queries"] = search_queries
+                    result["search_hints_count"] = len(search_hints)
+        
         # === A2 修复：不再在此处写入 Fact/Hint，移到 manager_summarize 裁决 ===
         # 仅记录 candidates 待 Manager 裁决
         logger.info(f"[Auditor Post] fact_candidates: {len(result.get('fact_candidates', []))}, hint_candidates: {len(result.get('hint_candidates', []))}")

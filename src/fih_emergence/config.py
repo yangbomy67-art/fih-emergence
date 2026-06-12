@@ -99,6 +99,16 @@ class HumanGateConfig:
 
 
 @dataclass
+class NetworkSearchConfig:
+    """网络搜索配置"""
+
+    enabled: bool = True
+    max_results: int = 3
+    provider: str = "duckduckgo"
+    timeout: int = 30
+
+
+@dataclass
 class Config:
     """全局配置"""
 
@@ -111,6 +121,7 @@ class Config:
     valley: ValleyConfig = field(default_factory=ValleyConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     human_gate: HumanGateConfig = field(default_factory=HumanGateConfig)
+    network_search: NetworkSearchConfig = field(default_factory=NetworkSearchConfig)
 
     @classmethod
     def from_yaml(cls, path: str | Path = None) -> "Config":
@@ -173,6 +184,9 @@ class Config:
 
         if "human_gate" in data:
             config.human_gate = HumanGateConfig(**data["human_gate"])
+
+        if "network_search" in data:
+            config.network_search = NetworkSearchConfig(**data["network_search"])
 
         return config
 
