@@ -1,5 +1,19 @@
 # FIH Emergence 版本
 
+## v1.0.3 (2026-06-12) - 第二期开发
+
+### 新增功能
+- **网络搜索功能**（方案C - Auditor守门员模式）
+  - DuckDuckGo + Jina Reader 免费方案
+  - Auditor 审核时判断是否需要搜索验证
+  - 搜索结果写入黑板作为 Hint，下一轮生效
+
+### 第一期悬置功能
+- ~~diversify_intent 多样化 Intent~~ ✅ v1.0.2
+- ~~HumanGate CLI~~ ✅ v1.0.1 已实现
+
+---
+
 ## v1.0.0 (2026-06-12) - 第一期发布
 
 ### 已实现功能
