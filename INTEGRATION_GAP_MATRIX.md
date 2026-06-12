@@ -12,8 +12,8 @@
 - [x] A3: 终止条件判定逻辑错误 (Logic L2) ✅ Sprint4
 
 ## Severity: Minor (代码坏味道/死代码)
-- [ ] N1: detect_valley / check_valley 死代码清理
-- [ ] N2: confidence_aggregation 重新命名或删除
+- [x] N1: detect_valley / check_valley 死代码标注 ✅ 标注为备用逻辑
+- [x] N2: confidence_aggregation 删除终止条件，config字段保留待清理
 
 ---
 

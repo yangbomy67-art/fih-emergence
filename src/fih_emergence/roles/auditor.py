@@ -154,10 +154,14 @@ class Auditor:
         no_fact_rounds: int,
     ) -> dict:
         """
-        检测低谷
-
+        检测低谷 (N1: 死代码，当前未调用)
+        
+        实际低谷检测逻辑在 graph.py auditor_post 节点中实现。
+        此方法保留作为未来可能的重构参考。
+        
         连续 3 轮 result_ei < 10 或 连续 3 轮无 Fact+ → 低谷
         """
+        # 备用逻辑，当前未调用
         # 检查无 Fact+ 轮次
         if no_fact_rounds >= 3:
             return {

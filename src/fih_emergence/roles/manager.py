@@ -138,17 +138,19 @@ class Manager:
 
     def select_valley_strategy(self, state: FIHState) -> tuple[bool, str, str]:
         """
-        选择低谷穿越策略（低谷检测是程序自动，这里只做策略选择）
-
+        选择低谷穿越策略（N1: 死代码，当前未调用）
+        
+        实际低谷检测逻辑在 graph.py auditor_post 节点中实现。
+        此方法保留作为未来可能的重构参考。
+        
         Returns:
             (是否需要执行策略, 策略类型, 策略建议)
             策略类型: diversify_intent / force_fact_plus / none
         """
+        # 备用逻辑，当前未调用
         # 检查连续无 Fact+ 轮次
         if state.get("no_fact_rounds", 0) >= 3:
             return True, "no_fact", "force_fact_plus"
-
-        # 检查 result_ei 连续低下（需要 ei_tracking）
 
         return False, "", ""
 
