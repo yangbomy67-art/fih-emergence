@@ -59,7 +59,6 @@ class EIConfig:
     """EI 评估配置"""
 
     result_ei_threshold: int = 30
-    confidence_aggregation_threshold: int = 85
     scores_4d_threshold: int = 7
 
 

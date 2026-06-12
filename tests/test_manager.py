@@ -52,14 +52,14 @@ class TestManagerInterruptConditions:
         """置信度僵持：45-55"""
         state = create_initial_state("s1", "test")
         state["worker_submissions"] = [
-            {"worker_id": "worker_p", "self_confidence": 50},
-            {"worker_id": "worker_n", "self_confidence": 52},
+            {"worker_id": "worker_p", "self_confidence": 85},
+            {"worker_id": "worker_n", "self_confidence": 25},
         ]
 
         triggered, reason = self.manager.check_interrupt_conditions(state)
 
         assert triggered is True
-        assert "stalemate" in reason
+        assert "confidence_anomaly" in reason
 
     def test_output_stagnation(self):
         """产出停滞：连续 3 轮无 Fact+"""
@@ -169,23 +169,24 @@ class TestManagerValleyDetection:
         self.manager = Manager()
 
     def test_valley_no_fact(self):
-        """连续无 Fact+ → 低谷"""
+        """连续无 Fact+ → 低谷策略选择"""
         state = create_initial_state("s1", "test")
         state["no_fact_rounds"] = 3
 
-        detected, valley_type, operation = self.manager.detect_valley(state)
+        # 方法已重命名为 select_valley_strategy
+        needs_strategy, strategy_type, suggestion = self.manager.select_valley_strategy(state)
 
-        assert detected is True
-        assert valley_type == "no_fact"
+        assert needs_strategy is True
+        assert strategy_type == "no_fact"
 
     def test_no_valley(self):
-        """无低谷"""
+        """无低谷 - 不需要策略"""
         state = create_initial_state("s1", "test")
         state["no_fact_rounds"] = 1
 
-        detected, valley_type, operation = self.manager.detect_valley(state)
+        needs_strategy, strategy_type, suggestion = self.manager.select_valley_strategy(state)
 
-        assert detected is False
+        assert needs_strategy is False
 
 
 class TestConfidenceAggregation:

@@ -88,12 +88,17 @@ class TestAuditorConfidenceAnomaly:
         assert triggered is True
         assert condition == "n_dominant"
 
-    def test_check_confidence_stalemate(self):
-        """置信度僵持"""
-        triggered, condition = self.auditor.check_confidence_anomaly(50, 52)
-
+    def test_check_confidence_dominance(self):
+        """置信度悬殊 - 弱势方重产 (已删除45-55僵持)"""
+        # P强N弱: P>80%, N<30%
+        triggered, condition = self.auditor.check_confidence_anomaly(85, 25)
         assert triggered is True
-        assert condition == "stalemate"
+        assert condition == "p_dominant"
+        
+        # N强P弱: N>80%, P<30%
+        triggered, condition = self.auditor.check_confidence_anomaly(25, 85)
+        assert triggered is True
+        assert condition == "n_dominant"
 
     def test_check_no_anomaly(self):
         """无异常"""
