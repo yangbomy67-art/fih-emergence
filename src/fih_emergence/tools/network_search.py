@@ -11,6 +11,7 @@ NetworkSearchTool - 网络搜索工具
 import asyncio
 import logging
 import re
+import time
 import urllib.parse
 from dataclasses import dataclass
 from typing import Optional
@@ -23,7 +24,9 @@ logger = logging.getLogger("fih.network_search")
 # 默认配置
 DEFAULT_MAX_RESULTS = 3
 DEFAULT_TIMEOUT = 30
-JINA_READER_URL = "https://r.jina.ai/http://"
+DEFAULT_CACHE_SIZE = 100
+DEFAULT_CACHE_TTL = 3600  # 1小时
+JINA_READER_BASE = "https://r.jina.ai/"
 
 
 @dataclass
@@ -41,10 +44,15 @@ class NetworkSearchTool:
         self,
         max_results: int = DEFAULT_MAX_RESULTS,
         timeout: int = DEFAULT_TIMEOUT,
+        cache_size: int = DEFAULT_CACHE_SIZE,
+        cache_ttl: int = DEFAULT_CACHE_TTL,
     ):
         self.max_results = max_results
         self.timeout = timeout
-        self._search_cache: dict[str, list[SearchResult]] = {}  # 简单缓存
+        self._max_cache_size = cache_size
+        self._cache_ttl = cache_ttl
+        # 缓存格式: {query: (results, timestamp)}
+        self._search_cache: dict[str, tuple[list[SearchResult], float]] = {}
 
     async def search(self, query: str) -> list[SearchResult]:
         """
@@ -62,10 +70,15 @@ class NetworkSearchTool:
 
         query = query.strip()
 
-        # 检查缓存
+        # 检查缓存（有 TTL）
         if query in self._search_cache:
-            logger.info(f"使用缓存: {query}")
-            return self._search_cache[query]
+            cached_results, timestamp = self._search_cache[query]
+            if time.time() - timestamp < self._cache_ttl:
+                logger.info(f"使用缓存: {query}")
+                return cached_results
+            else:
+                # 缓存过期，删除
+                del self._search_cache[query]
 
         try:
             # 1. DuckDuckGo 搜索获取 URLs
@@ -77,8 +90,14 @@ class NetworkSearchTool:
             # 2. Jina Reader 提取内容
             results = await self._fetch_contents(urls)
 
-            # 缓存结果
-            self._search_cache[query] = results
+            # 缓存结果（带时间戳）
+            self._search_cache[query] = (results, time.time())
+            # LRU 清理：如果缓存超过大小限制，删除最老的
+            if len(self._search_cache) > self._max_cache_size:
+                oldest_key = min(self._search_cache.keys(), 
+                                key=lambda k: self._search_cache[k][1])
+                del self._search_cache[oldest_key]
+            
             logger.info(f"搜索完成: {query}, 获取 {len(results)} 条结果")
 
             return results
@@ -157,8 +176,8 @@ class NetworkSearchTool:
         async with aiohttp.ClientSession() as session:
             for url in urls:
                 try:
-                    # Jina Reader 提取
-                    jina_url = JINA_READER_URL + url
+                    # Jina Reader 提取（保留原始URL协议）
+                    jina_url = JINA_READER_BASE + url
                     async with session.get(jina_url, timeout=timeout) as resp:
                         if resp.status != 200:
                             logger.warning(f"Jina 提取失败: {url}, status: {resp.status}")
