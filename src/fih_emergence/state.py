@@ -157,7 +157,7 @@ class FIHState(TypedDict, total=False):
 def create_initial_state(
     session_id: str,
     task_description: str,
-    max_iterations: int = 20,
+    max_iterations: int = 5,
     initial_facts: list[dict] = None,
     initial_hints: list[dict] = None,
 ) -> FIHState:

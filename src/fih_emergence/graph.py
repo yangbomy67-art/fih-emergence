@@ -473,7 +473,7 @@ async def run_session(
     task_description: str,
     initial_facts: list[str] = None,
     initial_hints: list[str] = None,
-    max_iterations: int = 20,
+    max_iterations: int = 5,
 ) -> dict:
     """运行多轮会话（含终止条件和低谷穿越）"""
     # 初始化数据库

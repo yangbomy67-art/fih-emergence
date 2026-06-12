@@ -46,7 +46,7 @@ async def init_db(db_path: str = None) -> None:
             CREATE TABLE IF NOT EXISTS session_meta (
                 session_id TEXT PRIMARY KEY,
                 task_description TEXT NOT NULL,
-                max_iterations INTEGER DEFAULT 20,
+                max_iterations INTEGER DEFAULT 5,
                 mode TEXT DEFAULT 'FULL',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -133,7 +133,7 @@ async def init_db(db_path: str = None) -> None:
 async def create_session(
     session_id: str,
     task_description: str,
-    max_iterations: int = 20,
+    max_iterations: int = 5,
 ) -> None:
     """创建新会话"""
     now = datetime.utcnow().isoformat() + "Z"
