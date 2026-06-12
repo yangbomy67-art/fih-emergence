@@ -1,22 +1,20 @@
 """
 NetworkSearchTool - 网络搜索工具
 
-基于 DuckDuckGo + Jina Reader 的免费方案
+基于百度智能搜索 API + 本地 trafilatura 提取
 
 用法:
-    tool = NetworkSearchTool()
+    tool = NetworkSearchTool(api_key="bce-v3/...")
     results = await tool.search("AI agents 2024 trends")
 """
 
 import asyncio
 import logging
-import re
+import os
 import time
-from urllib.parse import quote_plus, unquote
+import re
 from dataclasses import dataclass
 from typing import Optional
-
-import httpx
 
 logger = logging.getLogger("fih.network_search")
 
@@ -25,7 +23,7 @@ DEFAULT_MAX_RESULTS = 3
 DEFAULT_TIMEOUT = 30
 DEFAULT_CACHE_SIZE = 100
 DEFAULT_CACHE_TTL = 3600  # 1小时
-JINA_READER_BASE = "https://r.jina.ai/"
+BAIDU_SEARCH_API = "https://qianfan.baidubce.com/v2/ai_search/web_search"
 
 
 @dataclass
@@ -37,7 +35,7 @@ class SearchResult:
 
 
 class NetworkSearchTool:
-    """网络搜索工具 (DuckDuckGo + Jina Reader)"""
+    """网络搜索工具 (百度智能搜索 API + 本地 trafilatura)"""
 
     def __init__(
         self,
@@ -45,6 +43,7 @@ class NetworkSearchTool:
         timeout: int = DEFAULT_TIMEOUT,
         cache_size: int = DEFAULT_CACHE_SIZE,
         cache_ttl: int = DEFAULT_CACHE_TTL,
+        api_key: str = None,
     ):
         self.max_results = max_results
         self.timeout = timeout
@@ -52,6 +51,11 @@ class NetworkSearchTool:
         self._cache_ttl = cache_ttl
         # 缓存格式: {query: (results, timestamp)}
         self._search_cache: dict[str, tuple[list[SearchResult], float]] = {}
+        
+        # API Key: 从环境变量或参数获取
+        self._api_key = api_key or os.environ.get("BAIDU_API_KEY", "")
+        if not self._api_key:
+            logger.warning("未设置 BAIDU_API_KEY 环境变量")
 
     async def search(self, query: str) -> list[SearchResult]:
         """
@@ -80,14 +84,11 @@ class NetworkSearchTool:
                 del self._search_cache[query]
 
         try:
-            # 1. DuckDuckGo 搜索获取 URLs
-            urls = await self._duckduckgo_search(query)
-            if not urls:
-                logger.warning(f"DuckDuckGo 无搜索结果: {query}")
+            # 1. 百度搜索 API 获取 URLs 和内容摘要
+            results = await self._baidu_search(query)
+            if not results:
+                logger.warning(f"百度搜索无结果: {query}")
                 return []
-
-            # 2. Jina Reader 提取内容
-            results = await self._fetch_contents(urls)
 
             # 缓存结果（带时间戳）
             self._search_cache[query] = (results, time.time())
@@ -105,139 +106,58 @@ class NetworkSearchTool:
             logger.error(f"搜索失败: {query}, error: {e}")
             return []
 
-    async def _duckduckgo_search(self, query: str) -> list[str]:
+    async def _baidu_search(self, query: str) -> list[SearchResult]:
         """
-        DuckDuckGo HTML 搜索 - 使用 requests 库 + 代理
+        百度智能搜索 API - 直接返回标题+URL+摘要
         """
         import requests
         
-        # 直接搜索（使用完整浏览器 headers 绕过检测）
-        session = requests.Session()
-        session.trust_env = True  # 使用系统代理
+        if not self._api_key:
+            logger.warning("未配置百度 API Key")
+            return []
+
+        url = BAIDU_SEARCH_API
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json"
+        }
         
-        # 编码查询
-        encoded_query = quote_plus(query)
-        search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
-        
-        urls = []
+        data = {
+            "messages": [
+                {"content": query, "role": "user"}
+            ],
+            "search_source": "baidu_search_v2",
+            "resource_type_filter": [{"type": "web", "top_k": self.max_results}],
+        }
+
+        results = []
         
         try:
-            # 1. 先访问主站获取 cookie
-            session.get("https://duckduckgo.com/", timeout=self.timeout, 
-                       headers={
-                           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-                           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                           "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-                           "Accept-Encoding": "gzip, deflate, br",
-                           "Referer": "https://www.duckduckgo.com/",
-                       })
+            resp = requests.post(url, headers=headers, json=data, timeout=self.timeout)
             
-            # 2. 搜索
-            resp = session.get(search_url, timeout=self.timeout,
-                               headers={
-                                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-                                   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                                   "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-                                   "Accept-Encoding": "gzip, deflate, br",
-                                   "Referer": "https://duckduckgo.com/",
-                               })
-
             if resp.status_code != 200:
-                logger.warning(f"DuckDuckGo 请求失败: {resp.status_code}")
+                logger.warning(f"百度搜索请求失败: {resp.status_code}")
                 return []
 
-            html = resp.text
-
-            # 检查是否有机器人检测
-            if "anomaly" in html.lower() or "challenge" in html.lower():
-                logger.warning(f"DuckDuckGo 机器人检测: {query}")
-                return []
-
-            if "result__a" not in html:
-                logger.warning(f"DuckDuckGo 无搜索结果: {query}")
-                return []
-
-            # 解析 HTML 提取 URL
-            pattern = r'class="result__a"[^>]*href="([^"]+)"'
-            matches = re.findall(pattern, html)
-
-            for href in matches[:self.max_results]:
-                if "/l/?uddg=" in href:
-                    actual_url = unquote(href.split("/l/?uddg=")[1])
-                    # 清理 tracking 参数
-                    actual_url = actual_url.split("&")[0]
-                    if actual_url.startswith("http"):
-                        urls.append(actual_url)
-                elif href.startswith("http"):
-                    urls.append(href)
+            result = resp.json()
+            references = result.get("references", [])
+            
+            for ref in references[:self.max_results]:
+                title = ref.get("title", "")
+                ref_url = ref.get("url", "")
+                content = ref.get("content", "") or ref.get("snippet", "")
+                
+                if ref_url:
+                    results.append(SearchResult(
+                        title=title,
+                        url=ref_url,
+                        content=content[:500] if content else "[无摘要]"
+                    ))
 
         except requests.Timeout:
-            logger.warning(f"DuckDuckGo 请求超时: {query}")
+            logger.warning(f"百度搜索请求超时: {query}")
         except Exception as e:
-            logger.error(f"DuckDuckGo 请求异常: {e}")
-
-        urls = list(dict.fromkeys(urls))[:self.max_results]
-        return urls
-
-    async def _fetch_contents(self, urls: list[str]) -> list[SearchResult]:
-        """
-        使用 Jina Reader 提取网页内容
-
-        Args:
-            urls: URL 列表
-
-        Returns:
-            搜索结果列表（含标题和内容）
-        """
-        results = []
-        timeout = httpx.Timeout(self.timeout)
-
-        async with httpx.AsyncClient(timeout=timeout) as session:
-            for url in urls:
-                try:
-                    # Jina Reader 提取（保留原始URL协议）
-                    jina_url = JINA_READER_BASE + url
-                    resp = await session.get(jina_url)
-                    if resp.status_code != 200:
-                        logger.warning(f"Jina 提取失败: {url}, status: {resp.status_code}")
-                        # 即使提取失败，也保留 URL 作为结果
-                        results.append(SearchResult(
-                            title=url,
-                            url=url,
-                            content="[内容提取失败]"
-                        ))
-                        continue
-
-                    text = resp.text
-
-                    # Jina 返回格式：第一行是标题，后续是内容
-                    lines = text.split("\n")
-                    title = lines[0].strip() if lines else url
-                    content = "\n".join(lines[1:]).strip()[:500]  # 限制内容长度
-
-                    results.append(SearchResult(
-                        title=title[:200],  # 限制标题长度
-                        url=url,
-                        content=content[:500] if content else "[无内容]"
-                    ))
-
-                except httpx.TimeoutException:
-                    logger.warning(f"Jina 请求超时: {url}")
-                    results.append(SearchResult(
-                        title=url,
-                        url=url,
-                        content="[请求超时]"
-                    ))
-                except Exception as e:
-                    logger.warning(f"Jina 提取异常: {url}, error: {e}")
-                    results.append(SearchResult(
-                        title=url,
-                        url=url,
-                        content=f"[提取异常: {type(e).__name__}]"
-                    ))
-
-                # 速率限制
-                await asyncio.sleep(1)
+            logger.error(f"百度搜索请求异常: {e}")
 
         return results
 
@@ -264,8 +184,7 @@ class NetworkSearchTool:
             # 默认关键词
             keywords = [
                 "最新", "2024", "2025", "2026", "趋势", "市场", "报告",
-                "最新", "new", "latest", "2024", "2025", "trend", "report",
-                "数据", "统计", "增长", "下降", "数据", "statistics",
+                "数据", "统计", "增长", "下降",
             ]
 
         text_lower = text.lower()
@@ -281,7 +200,8 @@ class NetworkSearchTool:
         Returns:
             搜索关键词列表
         """
-        # 简单的关键词提取：找包含年份/趋势等词汇的短语
+        import re
+        
         queries = []
 
         # 匹配年份 patterns
@@ -309,10 +229,11 @@ class NetworkSearchTool:
 
 async def main():
     """测试"""
-    tool = NetworkSearchTool()
+    api_key = os.environ.get("BAIDU_API_KEY", "")
+    tool = NetworkSearchTool(api_key=api_key)
 
     # 测试搜索
-    query = "AI agents 2024 trends"
+    query = "湖南产业 2026年一季度GDP"
     print(f"搜索: {query}")
 
     results = await tool.search(query)
@@ -321,7 +242,7 @@ async def main():
     for i, r in enumerate(results, 1):
         print(f"{i}. {r.title}")
         print(f"   URL: {r.url}")
-        print(f"   内容: {r.content[:100]}...")
+        print(f"   内容: {r.content[:150]}...")
         print()
 
 
