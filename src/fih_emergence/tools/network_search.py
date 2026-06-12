@@ -12,12 +12,11 @@ import asyncio
 import logging
 import re
 import time
-import urllib.parse
+from urllib.parse import quote_plus, unquote
 from dataclasses import dataclass
 from typing import Optional
 
-import aiohttp
-from aiohttp import ClientTimeout
+import httpx
 
 logger = logging.getLogger("fih.network_search")
 
@@ -108,55 +107,75 @@ class NetworkSearchTool:
 
     async def _duckduckgo_search(self, query: str) -> list[str]:
         """
-        DuckDuckGo HTML 搜索
-
-        Returns:
-            URL 列表
+        DuckDuckGo HTML 搜索 - 使用 requests 库 + 代理
         """
-        # 编码查询
-        encoded_query = urllib.parse.quote_plus(query)
-        url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
-
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
+        import requests
         
-        timeout = ClientTimeout(total=self.timeout)
-
+        # 直接搜索（使用完整浏览器 headers 绕过检测）
+        session = requests.Session()
+        session.trust_env = True  # 使用系统代理
+        
+        # 编码查询
+        encoded_query = quote_plus(query)
+        search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+        
         urls = []
+        
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=timeout) as resp:
-                    if resp.status != 200:
-                        logger.warning(f"DuckDuckGo 请求失败: {resp.status}")
-                        return []
+            # 1. 先访问主站获取 cookie
+            session.get("https://duckduckgo.com/", timeout=self.timeout, 
+                       headers={
+                           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                           "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                           "Accept-Encoding": "gzip, deflate, br",
+                           "Referer": "https://www.duckduckgo.com/",
+                       })
+            
+            # 2. 搜索
+            resp = session.get(search_url, timeout=self.timeout,
+                               headers={
+                                   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+                                   "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                                   "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                                   "Accept-Encoding": "gzip, deflate, br",
+                                   "Referer": "https://duckduckgo.com/",
+                               })
 
-                    html = await resp.text()
+            if resp.status_code != 200:
+                logger.warning(f"DuckDuckGo 请求失败: {resp.status_code}")
+                return []
 
-                    # 解析 HTML 提取 URL
-                    # 匹配 <a class="result__a" href="...">
-                    pattern = r'<a class="result__a"[^>]*href="([^"]*)"'
-                    matches = re.findall(pattern, html)
+            html = resp.text
 
-                    for href in matches[:self.max_results]:
-                        # DuckDuckGo 使用 /l/?uddg=URL 格式
-                        if "/l/?uddg=" in href:
-                            actual_url = href.split("/l/?uddg=")[1]
-                            actual_url = urllib.parse.unquote(actual_url)
-                            # 验证是有效 URL
-                            if actual_url.startswith("http"):
-                                urls.append(actual_url)
+            # 检查是否有机器人检测
+            if "anomaly" in html.lower() or "challenge" in html.lower():
+                logger.warning(f"DuckDuckGo 机器人检测: {query}")
+                return []
 
-                        # 直接 URL
-                        elif href.startswith("http"):
-                            urls.append(href)
+            if "result__a" not in html:
+                logger.warning(f"DuckDuckGo 无搜索结果: {query}")
+                return []
 
-        except asyncio.TimeoutError:
+            # 解析 HTML 提取 URL
+            pattern = r'class="result__a"[^>]*href="([^"]+)"'
+            matches = re.findall(pattern, html)
+
+            for href in matches[:self.max_results]:
+                if "/l/?uddg=" in href:
+                    actual_url = unquote(href.split("/l/?uddg=")[1])
+                    # 清理 tracking 参数
+                    actual_url = actual_url.split("&")[0]
+                    if actual_url.startswith("http"):
+                        urls.append(actual_url)
+                elif href.startswith("http"):
+                    urls.append(href)
+
+        except requests.Timeout:
             logger.warning(f"DuckDuckGo 请求超时: {query}")
         except Exception as e:
             logger.error(f"DuckDuckGo 请求异常: {e}")
 
-        # 去重
         urls = list(dict.fromkeys(urls))[:self.max_results]
         return urls
 
@@ -171,38 +190,38 @@ class NetworkSearchTool:
             搜索结果列表（含标题和内容）
         """
         results = []
-        timeout = ClientTimeout(total=self.timeout)
+        timeout = httpx.Timeout(self.timeout)
 
-        async with aiohttp.ClientSession() as session:
+        async with httpx.AsyncClient(timeout=timeout) as session:
             for url in urls:
                 try:
                     # Jina Reader 提取（保留原始URL协议）
                     jina_url = JINA_READER_BASE + url
-                    async with session.get(jina_url, timeout=timeout) as resp:
-                        if resp.status != 200:
-                            logger.warning(f"Jina 提取失败: {url}, status: {resp.status}")
-                            # 即使提取失败，也保留 URL 作为结果
-                            results.append(SearchResult(
-                                title=url,
-                                url=url,
-                                content="[内容提取失败]"
-                            ))
-                            continue
-
-                        text = await resp.text()
-
-                        # Jina 返回格式：第一行是标题，后续是内容
-                        lines = text.split("\n")
-                        title = lines[0].strip() if lines else url
-                        content = "\n".join(lines[1:]).strip()[:500]  # 限制内容长度
-
+                    resp = await session.get(jina_url)
+                    if resp.status_code != 200:
+                        logger.warning(f"Jina 提取失败: {url}, status: {resp.status_code}")
+                        # 即使提取失败，也保留 URL 作为结果
                         results.append(SearchResult(
-                            title=title[:200],  # 限制标题长度
+                            title=url,
                             url=url,
-                            content=content[:500] if content else "[无内容]"
+                            content="[内容提取失败]"
                         ))
+                        continue
 
-                except asyncio.TimeoutError:
+                    text = resp.text
+
+                    # Jina 返回格式：第一行是标题，后续是内容
+                    lines = text.split("\n")
+                    title = lines[0].strip() if lines else url
+                    content = "\n".join(lines[1:]).strip()[:500]  # 限制内容长度
+
+                    results.append(SearchResult(
+                        title=title[:200],  # 限制标题长度
+                        url=url,
+                        content=content[:500] if content else "[无内容]"
+                    ))
+
+                except httpx.TimeoutException:
                     logger.warning(f"Jina 请求超时: {url}")
                     results.append(SearchResult(
                         title=url,

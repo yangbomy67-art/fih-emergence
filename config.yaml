@@ -105,7 +105,7 @@ human_gate:
 
 ## 网络搜索配置
 network_search:
-  enabled: false  # 禁用DuckDuckGo搜索（国内访问超时）
+  enabled: true  # 已启用 DuckDuckGo 搜索
   max_results: 3
   provider: "duckduckgo"
   timeout: 30
