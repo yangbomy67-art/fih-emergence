@@ -87,6 +87,89 @@ async def node_auditor_pre(state: FIHState) -> FIHState:
     return state
 
 
+async def node_manager_confirm_intent(state: FIHState) -> FIHState:
+    """
+    M1: Manager 确认 Intent
+    
+    从 Proposer 的候选 intents 中选择一个，确认后写入 winner_intent
+    同时填写三要素（EI启发评估 + 低谷识别 + Next Intent建议）
+    """
+    intents = state.get("intents", [])
+    if not intents:
+        logger.warning("[Manager Confirm] 无候选 Intent，跳过")
+        state["intent_confirmed"] = False
+        state["winner_intent"] = None
+        state["next_intent_suggestions"] = []
+        return state
+    
+    # 简化：直接选第一个作为确认的 Intent
+    # TODO: 后续可扩展为 LLM 辅助选择 + 三要素填写
+    confirmed_intent = intents[0]
+    state["winner_intent"] = confirmed_intent
+    state["intent_confirmed"] = True
+    
+    # 生成 Next Intent 建议（简化版：基于当前 Intent 方向延伸）
+    # TODO: 后续可扩展为 LLM 分析 Facts+Hints+Intent 后生成
+    current_intent_content = confirmed_intent.get("content", "")
+    suggestions = [
+        f"基于'{current_intent_content}'的进一步深化",
+        f"从另一角度审视'{current_intent_content}'",
+    ]
+    state["next_intent_suggestions"] = suggestions
+    
+    logger.info(f"[Manager Confirm] 已确认 Intent: {confirmed_intent.get('id', 'N/A')}")
+    return state
+
+
+async def node_manager_summarize(state: FIHState) -> FIHState:
+    """
+    M2: Manager 汇总裁决
+    
+    1. 审核 fact_candidates、hint_candidates
+    2. 决定 Fact/Hint 升格（裁决）
+    3. 生成 Next Intent 建议（如果 auditor_post 未生成）
+    """
+    audit_result = state.get("audit_result", {})
+    
+    # 1. Fact 升格裁决：审核 fact_candidates
+    fact_candidates = audit_result.get("fact_candidates", [])
+    if fact_candidates:
+        existing_facts = state.get("facts", [])
+        existing_contents = {f.get("content", "") for f in existing_facts}
+        
+        for fc in fact_candidates:
+            content = fc.get("content", "")
+            # 简化：内容不重复则升格
+            if content and content not in existing_contents:
+                logger.info(f"[Manager Summarize] Fact 升格裁决通过: {content[:40]}...")
+        
+        # 注意：实际写入在 auditor_post 节点已执行，这里是裁决记录
+    
+    # 2. Hint 升格评估：处理 suggest_promote_to_fact
+    hint_candidates = audit_result.get("hint_candidates", [])
+    promoted_count = 0
+    for hc in hint_candidates:
+        if hc.get("suggest_promote_to_fact", False):
+            # 已在 auditor_post 节点自动升格，这里记录裁决日志
+            promoted_count += 1
+    
+    if promoted_count > 0:
+        logger.info(f"[Manager Summarize] 本轮共 {promoted_count} 条 Hint 升格为 Fact（已执行）")
+    
+    # 3. 如果 next_intent_suggestions 为空，补充生成
+    if not state.get("next_intent_suggestions"):
+        winner = state.get("winner_intent", {})
+        content = winner.get("content", "通用方向")
+        state["next_intent_suggestions"] = [
+            f"深入探索{content}",
+            f"交叉验证{content}",
+        ]
+        logger.info("[Manager Summarize] 补充生成 Next Intent 建议")
+    
+    logger.info("[Manager Summarize] 汇总裁决完成")
+    return state
+
+
 async def node_worker_p(state: FIHState) -> FIHState:
     """Worker_P: 产出 Insight"""
     worker = get_worker_p()
@@ -373,23 +456,27 @@ async def node_auditor_post(state: FIHState) -> FIHState:
 
 
 def create_graph() -> StateGraph:
-    """创建工作流（单轮）"""
+    """创建工作流（单轮）- 9步流程"""
     graph = StateGraph(FIHState)
 
     graph.add_node("manager", node_manager_start)
     graph.add_node("proposer", node_proposer_generate)
+    graph.add_node("manager_confirm", node_manager_confirm_intent)  # M1: Manager 确认 Intent
     graph.add_node("auditor_pre", node_auditor_pre)
     graph.add_node("worker_p", node_worker_p)
     graph.add_node("worker_n", node_worker_n)
     graph.add_node("auditor_post", node_auditor_post)
+    graph.add_node("manager_summarize", node_manager_summarize)  # M2: Manager 汇总裁决
 
     graph.set_entry_point("manager")
     graph.add_edge("manager", "proposer")
-    graph.add_edge("proposer", "auditor_pre")
+    graph.add_edge("proposer", "manager_confirm")  # M1: 新增节点
+    graph.add_edge("manager_confirm", "auditor_pre")
     graph.add_edge("auditor_pre", "worker_p")
     graph.add_edge("worker_p", "worker_n")
     graph.add_edge("worker_n", "auditor_post")
-    graph.add_edge("auditor_post", END)
+    graph.add_edge("auditor_post", "manager_summarize")  # M2: 新增节点
+    graph.add_edge("manager_summarize", END)
 
     return graph
 

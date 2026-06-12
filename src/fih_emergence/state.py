@@ -100,9 +100,11 @@ class FIHState(TypedDict, total=False):
     # =======================
     # Manager 决策结果
     # =======================
-    winner_intent: dict | None  # 本轮胜出Intent
+    winner_intent: dict | None  # 本轮胜出Intent (Manager 确认的)
     next_intent_candidates: list  # 下一轮候选 Intent
+    next_intent_suggestions: list  # Manager 给 Proposer 的后续 Intent 建议
     intent_ei_scores: list  # 每个候选的 intent EI 分数
+    intent_confirmed: bool  # Manager 是否已确认 Intent
 
     # =======================
     # 低谷检测 (累积存储)
@@ -187,7 +189,9 @@ def create_initial_state(
         "hints_promoted_to_facts": [],
         "winner_intent": None,
         "next_intent_candidates": [],
+        "next_intent_suggestions": [],  # D1: Manager 给 Proposer 的后续 Intent 建议
         "intent_ei_scores": [],
+        "intent_confirmed": False,  # M1: Manager 是否已确认 Intent
         "valley_detected": False,
         "valley_signals": [],
         "valley_operation": None,
