@@ -238,6 +238,9 @@ class NetworkSearchTool:
         Returns:
             是否需要搜索
         """
+        if not text or not text.strip():
+            return False
+        
         if keywords is None:
             # 默认关键词
             keywords = [
