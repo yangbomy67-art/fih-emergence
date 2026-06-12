@@ -1,0 +1,17 @@
+2026-06-12 09:35:46 | ERROR    | asyncio | Task exception was never retrieved
+future: <Task finished name='Task-5' coro=<run_session() done, defined at /home/bo/fih-emergence/src/fih_emergence/graph.py:471> exception=IntegrityError('UNIQUE constraint failed: session_meta.session_id')>
+Traceback (most recent call last):
+  File "/home/bo/fih-emergence/src/fih_emergence/graph.py", line 484, in run_session
+    await create_session(
+  File "/home/bo/fih-emergence/src/fih_emergence/database.py", line 141, in create_session
+    await db.execute(
+  File "/home/bo/fih-emergence/.venv/lib/python3.12/site-packages/aiosqlite/core.py", line 223, in execute
+    cursor = await self._execute(self._conn.execute, sql, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bo/fih-emergence/.venv/lib/python3.12/site-packages/aiosqlite/core.py", line 160, in _execute
+    return await future
+           ^^^^^^^^^^^^
+  File "/home/bo/fih-emergence/.venv/lib/python3.12/site-packages/aiosqlite/core.py", line 63, in _connection_worker_thread
+    result = function()
+             ^^^^^^^^^^
+sqlite3.IntegrityError: UNIQUE constraint failed: session_meta.session_id

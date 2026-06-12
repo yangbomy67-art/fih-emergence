@@ -20,6 +20,13 @@ def generate_report_from_history(
     ei_scores = [r.get("ei_score", 0) for r in rounds_history if r.get("ei_score", 0) > 0]
     ei_mean = sum(ei_scores) / len(ei_scores) if ei_scores else 0
     
+    # 判断涌现检测（从 rounds_history 最后一轮的状态）
+    emergence_detected = False
+    if rounds_history and len(rounds_history) >= 2:
+        # 如果最近2轮 EI >= 30，则为涌现成功
+        if all(r.get("ei_score", 0) >= 30 for r in rounds_history[-2:]):
+            emergence_detected = True
+    
     md = f"""# 任务报告：{task_description}
 
 ## 任务概览
@@ -27,7 +34,7 @@ def generate_report_from_history(
 - **状态**: {task_status}
 - **执行轮数**: {current_round}
 - **EI 均值**: {ei_mean:.1f}
-- **涌现检测**: {'是' if current_round >= 2 else '否'}
+- **涌现检测**: {'是' if emergence_detected else '否'}
 
 ---
 
