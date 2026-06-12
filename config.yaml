@@ -102,3 +102,10 @@ human_gate:
   heartbeat_interval: 30
   # 重连最大尝试次数
   max_reconnect_attempts: 5
+
+## 网络搜索配置
+network_search:
+  enabled: false  # 禁用DuckDuckGo搜索（国内访问超时）
+  max_results: 3
+  provider: "duckduckgo"
+  timeout: 30
