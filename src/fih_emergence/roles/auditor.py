@@ -313,10 +313,24 @@ class Auditor:
             return []
 
         hints = []
+        seen_urls = set()  # URL 去重
+        seen_contents = set()  # 内容去重（标题+前50字）
+        
         for query in queries:
             try:
                 results = await self.search_tool.search(query)
                 for r in results:
+                    # URL 去重
+                    if r.url in seen_urls:
+                        continue
+                    seen_urls.add(r.url)
+                    
+                    # 内容去重（标题+内容前50字）
+                    content_key = f"{r.title}:{r.content[:50]}"
+                    if content_key in seen_contents:
+                        continue
+                    seen_contents.add(content_key)
+                    
                     hints.append({
                         "content": f"[搜索:{query}] {r.title}: {r.content[:200]}",
                         "source": "network_search",
