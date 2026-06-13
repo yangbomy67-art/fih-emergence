@@ -192,19 +192,19 @@ class NetworkSearchTool:
 
     def extract_search_queries(self, text: str) -> list[str]:
         """
-        从文本中提取可搜索的关键词
+        从文本中提取可搜索的关键词（只取1个最关键的）
 
         Args:
             text: 待提取文本
 
         Returns:
-            搜索关键词列表
+            搜索关键词列表（最多1个）
         """
         import re
         
         queries = []
 
-        # 匹配年份 patterns
+        # 匹配年份 patterns（优先找年份+产业相关的）
         year_patterns = [
             r'(202[4-9])\s*(?:年|的)?\s*(\w+)',
             r'(\w+)\s*(?:202[4-9]|年|趋势)',
@@ -224,7 +224,8 @@ class NetworkSearchTool:
         if not queries and len(text) > 5:
             queries = [text[:50]]  # 取前50字符
 
-        return queries[:3]  # 最多3个查询
+        # 只返回1个最关键的搜索词
+        return queries[:1]  # 最多1个查询
 
 
 async def main():
