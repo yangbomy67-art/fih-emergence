@@ -16,7 +16,7 @@ async def main():
     print()
     
     result = await run_session(
-        session_id='test-baidu-v3',
+        session_id='test-baidu-v4',
         task_description='湖南产业全方位调查',
         initial_facts=[
             '2026年一季度湖南GDP 13,156.10亿元、同比增长3.0%，湖南GDP增速为中部六省最低、全国倒数第二'
