@@ -27,9 +27,11 @@ Round N:
     1. Worker 推理产出 insight（不搜索）
         ↓ {"insight": "...", "confidence": 80}
     2. Auditor 审核
-        ↓ "这个产出涉及最新趋势，需要验证"
-        ↓ 调用 search_web("AI agents 2024")
-        ↓ 搜索结果写入黑板作为 Hint
+        ↓ 识别 Insight 中所有需验证声明
+        ↓ 按影响力排序 → 选排第1的 → 生成 1 个查询意图
+        ↓ 调用 search_web("湖南2026一季度GDP增速 4.8%")
+        ↓ LLM 压缩搜索结果为 1 条内容（数字原样保留）
+        ↓ 有内容 → 写入黑板作为 Hint；无内容 → 不写入
     3. 进入 Round N+1
         ↓ Worker 推理时自然读取黑板中的搜索结果 Hint
         ↓ 产出已融合实时信息的 insight
@@ -88,15 +90,32 @@ class Auditor:
         审核 Worker 产出
         1. 四维审计
         2. 提取 Fact/Hint candidates
-        3. 如需实时验证 → 调用网络搜索 → 结果写入黑板
+        3. 如需实时验证 → 调用网络搜索（1个查询意图）
+           → LLM 压缩搜索结果为 1 条内容（数字原样保留）
+           → 有内容则写入黑板作为 Hint，无内容则不写入
         """
         # 检查是否需要搜索
         if self._needs_search_verification(insight, facts):
             search_results = await self.search_tool.search(query)
-            # 写入黑板作为 Hint（下一轮生效）
-            hint_candidates = self._format_as_hints(search_results)
+            # LLM 压缩：多条搜索结果 → 1 条内容，数字原样保留
+            if search_results:
+                compressed = await self._compress_search_results(search_results)
+                if compressed:
+                    hint_candidates.append(compressed)
+            # 无搜索结果 → 不写入黑板
         
         return audit_result
+
+    async def _compress_search_results(self, results: list) -> str:
+        """
+        LLM 压缩多条搜索结果为 1 条 Hint 内容
+        
+        规则：
+        - 数字原样保留（如 4.8%、12600亿）
+        - 去重去噪，保留与查询意图最相关的核心信息
+        - 无有效内容则返回 None
+        """
+        pass
 ```
 
 ---
@@ -116,8 +135,10 @@ class Auditor:
 │       ├─ 提取 fact_candidates                               │
 │       ├─ 提取 hint_candidates                                │
 │       └─ **判断是否需要搜索验证**                            │
-│          → 需要: search_web(query) → 新 Hint 写入黑板        │
-│          → 不需要: 跳过                                      │
+│          → 需要: search_web(1个查询意图)                     │
+│             → LLM 压缩搜索结果为 1 条内容（数字原样保留）     │
+│             → 有内容: 新 Hint 写入黑板                       │
+│             → 无内容/搜索失败: 不写入黑板，记录日志           │
 │                                                              │
 │ 3. Manager 汇总裁决                                          │
 │    → Fact/Hint 升格                                          │
@@ -169,8 +190,10 @@ C. 跨路径一致性
 D. 可传递性
 
 ### 2. 实时信息验证
-- 检查 Insight 是否涉及"最新趋势"、"市场数据"、"2024/2025"等内容
-- 如涉及，标记需要搜索验证（设置 search_needed: true + 搜索关键词）
+- 检查 Insight 中所有涉及"最新趋势"、"市场数据"、"具体数值"、"2024/2025/2026"等需外部验证的声明
+- 按对 Insight 结论的影响力排序：如果该声明被否定，Insight 整体是否仍成立？
+- **只输出影响力排第 1 的声明**作为搜索查询意图
+- **数字必须原样保留**：查询中若含数值（如 4.8%），必须原样写入
 
 ### 3. 输出格式
 ```json
@@ -181,9 +204,11 @@ D. 可传递性
   "fact_candidates": [...],
   "hint_candidates": [...],
   "search_needed": true,
-  "search_queries": ["AI agents 2024 trends"]
+  "search_query": "湖南2026一季度GDP增速 4.8%"
 }
 ```
+
+注意：search_query 只输出 1 个字符串（非数组），选择对 Insight 结论影响最大的待验证声明。
 """
 ```
 
@@ -193,8 +218,8 @@ D. 可传递性
 
 | 条件 | 处理 |
 |------|------|
-| 搜索失败 | 返回空 Hint，记录日志，Auditor 继续完成审核 |
-| 无搜索结果 | 只记录 "无需搜索���证"，不影响主流程 |
+| 搜索失败 | 不写入黑板，记录日志，Auditor 继续完成审核 |
+| 无搜索结果 | 不写入黑板，记录日志，不影响主流程 |
 | 内容提取失败 | 只保留 URL 作为 Hint 内容 |
 | 速率限制 | 添加 1s 延迟 |
 | 搜索结果过多 | 限制 max_results=3，取最新/最相关 |
