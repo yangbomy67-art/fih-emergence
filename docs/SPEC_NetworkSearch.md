@@ -1,4 +1,7 @@
-# SPEC_NetworkSearch - 网络搜索功能
+# SPEC_NetworkSearch - 网络搜索功能 v2
+
+> 版本: 2.0 | 更新: 2026-06-14
+> 变更: 取消 LLM 压缩，改为权威度过滤 + Top 3 原文存储
 
 ## 目标
 
@@ -20,7 +23,7 @@
 
 ---
 
-## 2. 架构（方案C）
+## 2. 架构 v2（方案C + 权威度过滤）
 
 ```
 Round N:
@@ -29,59 +32,98 @@ Round N:
     2. Auditor 审核
         ↓ 识别 Insight 中所有需验证声明
         ↓ 按影响力排序 → 选排第1的 → 生成 1 个查询意图
-        ↓ 调用 search_web("湖南2026一季度GDP增速 4.8%")
-        ↓ LLM 压缩搜索结果为 1 条内容（数字原样保留）
-        ↓ 有内容 → 写入黑板作为 Hint；无内容 → 不写入
+        ↓ 调用 search_web(query, top_k=50, site_filter=[...], time_range=[...])
+        ↓ 百度 API 返回 50 条结果
+        ↓ 域名权威度评分 → 排序 → 取 Top 3
+        ↓ 3 条原文直接写入黑板作为 Hints（不压缩）
+        ↓ 有内容 → 写入；无内容 → 不写入
     3. 进入 Round N+1
-        ↓ Worker 推理时自然读取黑板中的搜索结果 Hint
+        ↓ Worker 推理时自然读取黑板中的搜索结果 Hints（3 条完整对象）
         ↓ 产出已融合实时信息的 insight
 ```
+
+**关键变更（v1 → v2）**：
+- ~~LLM 压缩搜索结果为 1 条内容~~ → **权威度过滤取 Top 3 原文**
+- ~~max_results=3~~ → **API 拉 50 条，过滤后取 3**
+- ~~无过滤~~ → **时间过滤 + 站点过滤 + 权威度评分**
 
 ---
 
 ## 3. 实现方案
 
-### 方案: DuckDuckGo + Jina Reader（免费）
+### 搜索 API
 
-| 组件 | 作用 | 依赖 |
-|------|------|------|
-| DuckDuckGo HTML | 搜索获取 URL | 无需 API Key |
-| Jina Reader | 提取网页内容 | `curl` + URL |
+| 组件 | 说明 |
+|------|------|
+| 百度千帆 AI 搜索 | `POST https://qianfan.baidubce.com/v2/ai_search/web_search` |
+| 免费额度 | 1500 次/月（按日分发 ~50 次/日） |
+| 搜索深度 | top_k 最大 50 |
+| 时间过滤 | `search_filter.range.page_time` — 精确日期范围 |
+| 站点过滤 | `search_filter.match.site` — 最多 100 个指定站点 |
 
-### 成本
-- **DuckDuckGo**: 免费
-- **Jina Reader**: 免费（`https://r.jina.ai/http://<url>`）
-- **总计**: $0
+### 权威度评分（内置，不依赖外部 API）
+
+```
+域名权威度评分规则：
+  .gov.cn          → 10（政府）
+  .edu.cn          → 9（学术）
+  stats.gov.cn     → 10（统计局）
+  news.cn, xinhuanet.com → 8（官媒）
+  std.gov.cn 等标准机构 → 8
+  知名财经/科技媒体  → 5
+  其他              → 3
+  无域名            → 1
+```
 
 ---
 
 ## 4. 接口设计
 
-### NetworkSearchTool
+### NetworkSearchTool v2
 
 ```python
+from dataclasses import dataclass
+
+@dataclass
+class SearchResult:
+    title: str
+    url: str
+    content: str       # 摘要内容
+    domain: str         # 提取的域名
+    authority: int      # 权威度评分 1-10
+    publish_time: str   # 发布时间（如有）
+
 class NetworkSearchTool:
-    """网络搜索工具"""
-    
-    def __init__(self, max_results: int = 3):
-        self.max_results = max_results
-    
-    async def search(self, query: str) -> list[SearchResult]:
+    def __init__(
+        self,
+        api_key: str,
+        fetch_top_k: int = 50,        # API 拉取数量
+        return_top_k: int = 3,        # 过滤后返回数量
+        timeout: int = 30,
+    ):
+        ...
+
+    async def search(
+        self,
+        query: str,
+        site_filter: list[str] = None,    # 指定站点
+        time_range: tuple[str, str] = None, # ("2026-01-01", "2026-06-01")
+    ) -> list[SearchResult]:
         """
-        执行搜索
-        
-        Args:
-            query: 搜索关键词
-            
-        Returns:
-            [{"title": "...", "url": "...", "content": "..."}, ...]
+        1. 调用百度 API，传 top_k=50 + site_filter + time_range
+        2. 提取域名，计算 authority 评分
+        3. 按 authority DESC 排序
+        4. 返回 Top return_top_k 条
         """
-        pass
+        ...
+
+    @staticmethod
+    def authority_score(url: str) -> int:
+        """域名权威度评分"""
+        ...
 ```
 
-### Auditor 集成
-
-Auditor 在审核 Worker 产出时，判断是否需要搜索验证：
+### Auditor 集成 v2
 
 ```python
 class Auditor:
@@ -91,36 +133,36 @@ class Auditor:
         1. 四维审计
         2. 提取 Fact/Hint candidates
         3. 如需实时验证 → 调用网络搜索（1个查询意图）
-           → LLM 压缩搜索结果为 1 条内容（数字原样保留）
-           → 有内容则写入黑板作为 Hint，无内容则不写入
+           → 百度 API 拉 50 条
+           → 权威度排序取 Top 3
+           → 3 条原文写入黑板作为 Hints
+           → 无内容则不写入
         """
-        # 检查是否需要搜索
         if self._needs_search_verification(insight, facts):
-            search_results = await self.search_tool.search(query)
-            # LLM 压缩：多条搜索结果 → 1 条内容，数字原样保留
-            if search_results:
-                compressed = await self._compress_search_results(search_results)
-                if compressed:
-                    hint_candidates.append(compressed)
+            results = await self.search_tool.search(
+                query=search_query,
+                site_filter=DEFAULT_AUTHORITY_SITES,   # 默认高权威站点
+                time_range=self._infer_time_range(insight),
+            )
+            if results:
+                for r in results:
+                    hint_candidates.append({
+                        "title": r.title,
+                        "url": r.url,
+                        "content": r.content,           # 原文，不压缩
+                        "authority": r.authority,
+                        "source": "web_search",
+                    })
             # 无搜索结果 → 不写入黑板
         
         return audit_result
-
-    async def _compress_search_results(self, results: list) -> str:
-        """
-        LLM 压缩多条搜索结果为 1 条 Hint 内容
-        
-        规则：
-        - 数字原样保留（如 4.8%、12600亿）
-        - 去重去噪，保留与查询意图最相关的核心信息
-        - 无有效内容则返回 None
-        """
-        pass
 ```
+
+**移除的方法**：`_compress_search_results()` — 不再需要 LLM 压缩
 
 ---
 
-## 5. 数据流详解
+## 5. 数据流 v2
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -135,16 +177,17 @@ class Auditor:
 │       ├─ 提取 fact_candidates                               │
 │       ├─ 提取 hint_candidates                                │
 │       └─ **判断是否需要搜索验证**                            │
-│          → 需要: search_web(1个查询意图)                     │
-│             → LLM 压缩搜索结果为 1 条内容（数字原样保留）     │
-│             → 有内容: 新 Hint 写入黑板                       │
+│          → 需要: search_web(query, top_k=50, site_filter, time_range)
+│             → 权威度排序 → 取 Top 3 原文                     │
+│             → 有内容: 3 条 Hint 写入黑板                      │
 │             → 无内容/搜索失败: 不写入黑板，记录日志           │
 │                                                              │
 │ 3. Manager 汇总裁决                                          │
 │    → Fact/Hint 升格                                          │
 │                                                              │
 │ 4. 进入 Round N+1                                            │
-│    → Worker 推理时读取黑板 (含上一轮 Auditor 注入的搜索Hint) │
+│    → Worker 推理时读取黑板 (含上一轮 Auditor 注入的 3 条 Hint) │
+│    → 每条 Hint 含 {title, url, content, authority}           │
 │    → 产出融合实时信息的 insight                              │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -157,15 +200,20 @@ class Auditor:
 # config.yaml
 network_search:
   enabled: true
-  max_results: 3
-  provider: "duckduckgo"  # 免费方案
+  api_key_env: "BAIDU_API_KEY"
+  fetch_top_k: 50       # API 拉取数量
+  return_top_k: 3        # 过滤后返回数量
   timeout: 30
+  # 默认高权威站点（Auditor 搜索时自动添加）
+  default_sites:
+    - "stats.gov.cn"
+    - "news.cn"
+    - "xinhuanet.com"
+    - "gov.cn"
+    - "edu.cn"
   # Auditor 搜索触发条件
   auditor_trigger:
-    # 需要搜索的内容类型
-    keywords: ["最新", "2024", "2025", "趋势", "市场", "报告"]
-    # 置信度低于多少时触发搜索验证
-    confidence_threshold: 70
+    keywords: ["最新", "2024", "2025", "2026", "趋势", "市场", "报告", "数据", "统计"]
 ```
 
 ---
@@ -218,51 +266,57 @@ D. 可传递性
 
 | 条件 | 处理 |
 |------|------|
-| 搜索失败 | 不写入黑板，记录日志，Auditor 继续完成审核 |
-| 无搜索结果 | 不写入黑板，记录日志，不影响主流程 |
-| 内容提取失败 | 只保留 URL 作为 Hint 内容 |
-| 速率限制 | 添加 1s 延迟 |
-| 搜索结果过多 | 限制 max_results=3，取最新/最相关 |
+| 搜索失败 | 不写入黑板，记录日志，Auditor 继续审核 |
+| 无搜索结果 | 不写入黑板，记录日志 |
+| API 返回 < 3 条 | 有多少存多少 |
+| 权威度评分后无结果 | 不写入黑板 |
+| 速率限制 | 缓存 + 延迟 |
+| BAIDU_API_KEY 未设置 | 跳过搜索，记录 WARNING |
+| enabled=false | 跳过搜索 |
 
 ---
 
 ## 9. 安全与合规
 
-- **URL 验证**：只允许 HTTP/HTTPS，排除 javascript:, data: 等协议
-- **内容过滤**：基础广告、追踪器内容过滤
-- **搜索频率限制**：同一 session 相同关键词不重复搜索
+- **URL 验证**：只允许 HTTP/HTTPS
+- **搜索频率限制**：同一 session 相同关键词不重复搜索（缓存 TTL=3600s）
+- **API Key**：只能从环境变量读取，不可硬编码
 
 ---
 
-## 10. 验收标准
+## 10. 验收标准 v2
 
-| ID | 标准 | 测试 |
-|----|------|------|
-| NS-01 | Auditor 审核时判断是否需要搜索 | 模拟需要/不需要两种场景 |
-| NS-02 | 搜索返回 3 条结果 | 调用 search() 验证 |
-| NS-03 | 内容提取成功 | Jina Reader 返回文本 |
-| NS-04 | 搜索结果写入黑板作为 Hint | 检查 hints 字段 |
-| NS-05 | 下一轮 Worker 能读取搜索 Hint | 验证数据流 |
-| NS-06 | 搜索失败不影响审核流程 | 模拟失败测试 |
-| NS-07 | 配置开关生效 | enabled=false 时跳过 |
+| ID | 标准 | 测试方法 |
+|----|------|----------|
+| NS-01 | Auditor 判断是否需要搜索 | 模拟需要/不需要 |
+| NS-02 | API 调用传 top_k=50 + site_filter | 检查请求 payload |
+| NS-03 | 权威度评分正确（gov.cn=10, 未知=3） | 单元测试 |
+| NS-04 | 50 条过滤后取 Top 3 | 验证 return_top_k |
+| NS-05 | 搜索结果以原文写入 Hint（不压缩） | 检查 hint.content == API返回 |
+| NS-06 | 3 条 Hint 写入黑板 | 检查 hints 字段长度=3 |
+| NS-07 | 下一轮 Worker 能读取 3 条 Hint | 验证数据流 |
+| NS-08 | 搜索失败不影响审核流程 | 模拟网络错误 |
+| NS-09 | enabled=false 时跳过 | 配置开关测试 |
+| NS-10 | API Key 未设置时跳过并 WARNING | 环境变量测试 |
 
 ---
 
-## 11. 文件变更
+## 11. 文件变更 v2
 
 | 文件 | 变更 |
 |------|------|
-| `src/fih_emergence/tools/network_search.py` | 新增 NetworkSearchTool 类 |
-| `src/fih_emergence/roles/auditor.py` | 集成搜索能力 |
-| `src/fih_emergence/prompts/__init__.py` | 修改 Auditor prompt |
-| `src/fih_emergence/config.py` | 新增 network_search 配置 |
+| `src/fih_emergence/tools/network_search.py` | 新增 authority_score + site_filter + time_range + fetch/return 分离 |
+| `src/fih_emergence/roles/auditor.py` | 移除 _compress_search_results，传 site_filter + time_range |
+| `src/fih_emergence/prompts/__init__.py` | 不变（Auditor prompt 无需改） |
+| `src/fih_emergence/config.py` | 新增 fetch_top_k, return_top_k, default_sites |
 | `config.yaml` | 新增 network_search 配置段 |
-| `tests/test_network_search.py` | 新增单元测试 |
+| `tests/test_network_search.py` | 更新 + 新增 authority_score / top_k 测试 |
 
 ---
 
-## 12. 待探索
+## 12. 变更记录
 
-- [ ] 多语言搜索支持
-- [ ] 搜索结果缓存（避免同轮重复搜索）
-- [ ] Worker 也能主动搜索的混合模式
+| 版本 | 日期 | 变更 |
+|------|------|------|
+| v2.0 | 2026-06-14 | 取消 LLM 压缩；API top_k=50→权威度排序→Top 3 原文存储；新增 site_filter/time_range |
+| v1.0 | 2026-06-12 | 初始版本，DuckDuckGo + Jina Reader → 百度 API，LLM 压缩 |
