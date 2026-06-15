@@ -103,10 +103,18 @@ human_gate:
   # 重连最大尝试次数
   max_reconnect_attempts: 5
 
-## 网络搜索配置
+## 网络搜索配置 v2
 network_search:
-  enabled: true  # 已启用百度搜索
-  max_results: 1  # 每轮只获取 1 条搜索结果
-  provider: "baidu"
+  enabled: true
+  api_key_env: "BAIDU_API_KEY"
+  fetch_top_k: 50          # API 拉取数量
+  return_top_k: 3          # 过滤后返回数量
   timeout: 30
-  # 百度 API Key: 从环境变量 BAIDU_API_KEY 加载
+  provider: "baidu"
+  # 默认高权威站点（Auditor 搜索时自动添加）
+  default_sites:
+    - "stats.gov.cn"
+    - "news.cn"
+    - "xinhuanet.com"
+    - "gov.cn"
+    - "edu.cn"

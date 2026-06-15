@@ -23,10 +23,14 @@ logger = logging.getLogger("fih.auditor")
 
 # 导入网络搜索工具
 try:
-    from fih_emergence.tools.network_search import NetworkSearchTool
+    from fih_emergence.tools.network_search import (
+        NetworkSearchTool,
+        DEFAULT_AUTHORITY_SITES,
+    )
     NETWORK_SEARCH_AVAILABLE = True
 except ImportError:
     NETWORK_SEARCH_AVAILABLE = False
+    DEFAULT_AUTHORITY_SITES = []
     logger.warning("NetworkSearchTool 不可用，网络搜索功能禁用")
 
 
@@ -36,17 +40,18 @@ class Auditor:
     def __init__(self, llm_client: BaseLLMClient = None):
         self.llm_client = llm_client or get_auditor_client()
         
-        # 初始化网络搜索工具
+        # 初始化网络搜索工具 v2
         self.search_tool = None
         if NETWORK_SEARCH_AVAILABLE:
             try:
                 config = get_config()
                 if config.network_search.enabled:
                     self.search_tool = NetworkSearchTool(
-                        max_results=config.network_search.max_results,
+                        fetch_top_k=config.network_search.fetch_top_k,
+                        return_top_k=config.network_search.return_top_k,
                         timeout=config.network_search.timeout,
                     )
-                    logger.info("Auditor 网络搜索工具已初始化")
+                    logger.info("Auditor 网络搜索工具 v2 已初始化")
             except Exception as e:
                 logger.warning(f"网络搜索工具初始化失败: {e}")
 
@@ -301,44 +306,46 @@ class Auditor:
         queries: list[str],
     ) -> list[dict]:
         """
-        执行搜索并将结果���式化为 Hint
+        执行搜索并格式化为 Hint v2
+
+        不再 LLM 压缩：API 拉 50 条 → 权威度排序 → Top 3 原文直接存储
 
         Args:
             queries: 搜索关键词列表
 
         Returns:
-            Hint 列表（供写入黑板）
+            Hint 列表（供写入黑板），每条含 title/url/content/authority/source
         """
         if not self.search_tool or not queries:
             return []
 
         hints = []
-        seen_urls = set()  # URL 去重
-        seen_contents = set()  # 内容去重（标题+前50字）
-        
+        seen_urls = set()
+
         for query in queries:
             try:
-                results = await self.search_tool.search(query)
+                results = await self.search_tool.search(
+                    query,
+                    site_filter=DEFAULT_AUTHORITY_SITES,
+                )
                 for r in results:
-                    # URL 去重
                     if r.url in seen_urls:
                         continue
                     seen_urls.add(r.url)
-                    
-                    # 内容去重（标题+内容前50字）
-                    content_key = f"{r.title}:{r.content[:50]}"
-                    if content_key in seen_contents:
-                        continue
-                    seen_contents.add(content_key)
-                    
+
                     hints.append({
-                        "content": f"[搜索:{query}] {r.title}: {r.content[:200]}",
+                        "content": f"{r.title}: {r.content[:300]}",
                         "source": "network_search",
                         "url": r.url,
                         "status": "candidate",
                         "search_query": query,
+                        "authority": r.authority,
+                        "domain": r.domain,
                     })
-                logger.info(f"搜索 '{query}' 获取 {len(results)} 条结果")
+                logger.info(
+                    f"搜索 '{query}' 返回 {len(results)} 条 Hint "
+                    f"(权威度: {[r.authority for r in results]})"
+                )
             except Exception as e:
                 logger.error(f"搜索 '{query}' 失败: {e}")
 

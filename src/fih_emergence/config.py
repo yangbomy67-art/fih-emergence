@@ -100,12 +100,22 @@ class HumanGateConfig:
 
 @dataclass
 class NetworkSearchConfig:
-    """网络搜索配置"""
+    """网络搜索配置 v2"""
 
     enabled: bool = True
-    max_results: int = 3
-    provider: str = "duckduckgo"
+    api_key_env: str = "BAIDU_API_KEY"
+    fetch_top_k: int = 50          # API 拉取数量
+    return_top_k: int = 3          # 过滤后返回数量
     timeout: int = 30
+    provider: str = "baidu"
+    # 默认高权威站点
+    default_sites: list[str] = field(default_factory=lambda: [
+        "stats.gov.cn",
+        "news.cn",
+        "xinhuanet.com",
+        "gov.cn",
+        "edu.cn",
+    ])
 
 
 @dataclass
