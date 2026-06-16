@@ -16,7 +16,7 @@ from fih_emergence.graph import run_session
 
 
 async def main():
-    session_id = "hunan-industry-survey"
+    session_id = "hunan-industry-survey-r5"
     topic = "湖南产业全方位调查"
     initial_facts = [
         "2026年一季度湖南GDP 13,156.10亿元、同比增长3.0%",
