@@ -26,6 +26,10 @@ Thumbs.db
 *.swp
 *.swo
 
+# Environment variables (NEVER commit real keys)
+.env
+.env.*.local
+
 # Project specific
 data/*.db
 results/*.md

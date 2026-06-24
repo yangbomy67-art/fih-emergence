@@ -4,8 +4,11 @@ import asyncio
 import os
 import sys
 
-# 设置百度 API Key
-os.environ["BAIDU_API_KEY"] = "BAIDU_API_KEY_FROM_ENV"
+# 百度 API Key 从环境变量加载（不要硬编码！）
+# 运行前设置: export BAIDU_API_KEY='your_key_here'
+if "BAIDU_API_KEY" not in os.environ:
+    print("⚠️  请设置 BAIDU_API_KEY 环境变量", file=sys.stderr)
+    sys.exit(1)
 
 sys.path.insert(0, 'src')
 
